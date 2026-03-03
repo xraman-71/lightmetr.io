@@ -1,0 +1,1000 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Electricity Bill Generator — ElectroCalc</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ═══════════════════════════════════════════
+   DESIGN TOKENS — identical to landing page
+═══════════════════════════════════════════ */
+:root {
+  --black:#0e0e0e; --off-black:#1c1a18; --near-black:#2a2420;
+  --white:#ffffff; --off-white:#f7f4f0; --cream:#ede8e0; --warm-gray:#c8bfb2;
+  --brown-dark:#5c3d2e; --brown-mid:#8b5e3c; --brown-light:#b8886a;
+  --brown-pale:#d9b89a; --brown-wash:#f0e4d7;
+  --sky-dark:#2b5f7a; --sky-mid:#3d85a8; --sky-light:#6aadcc;
+  --sky-pale:#a8d4e8; --sky-wash:#dff0f8;
+  --grad-brown:linear-gradient(135deg,#5c3d2e 0%,#b8886a 50%,#d9b89a 100%);
+  --grad-sky:linear-gradient(135deg,#2b5f7a 0%,#3d85a8 50%,#6aadcc 100%);
+  --grad-mix:linear-gradient(135deg,#3d2b1f 0%,#5c3d2e 30%,#2b5f7a 70%,#3d85a8 100%);
+  --grad-subtle:linear-gradient(160deg,#f7f4f0 0%,#f0e4d7 40%,#dff0f8 100%);
+  --shadow-sm:0 2px 12px rgba(92,61,46,.08);
+  --shadow-md:0 8px 40px rgba(92,61,46,.12);
+  --radius:16px; --radius-sm:10px; --radius-pill:100px;
+}
+
+/* ═══ RESET & BASE ═══ */
+*,*::before,*::after { box-sizing:border-box; margin:0; padding:0 }
+html { scroll-behavior:smooth }
+body {
+  background:var(--white); color:var(--off-black);
+  font-family:'DM Sans',sans-serif; line-height:1.7;
+  -webkit-font-smoothing:antialiased; min-height:100vh;
+}
+body::before {
+  content:''; position:fixed; inset:0; pointer-events:none; z-index:0;
+  background:
+    radial-gradient(ellipse 70% 40% at 50% 0%, rgba(184,136,106,.06) 0%, transparent 60%),
+    radial-gradient(ellipse 40% 60% at 100% 100%, rgba(106,173,204,.05) 0%, transparent 50%);
+}
+h1,h2,h3 { font-family:'Playfair Display',serif; line-height:1.2 }
+a { text-decoration:none; color:inherit }
+::-webkit-scrollbar { width:6px }
+::-webkit-scrollbar-track { background:var(--off-white) }
+::-webkit-scrollbar-thumb { background:var(--brown-light); border-radius:3px }
+
+/* ═══ NAV ═══ */
+.nav {
+  position:sticky; top:0; z-index:100;
+  background:rgba(255,255,255,.93); backdrop-filter:blur(20px);
+  -webkit-backdrop-filter:blur(20px);
+  border-bottom:1px solid rgba(92,61,46,.08);
+  animation:slideDown .4s ease both;
+}
+@keyframes slideDown { from{transform:translateY(-100%);opacity:0} to{transform:translateY(0);opacity:1} }
+.nav-inner {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:1rem 2rem; max-width:1300px; margin:0 auto; gap:1.5rem;
+}
+.nav-logo { display:flex; align-items:center; gap:.6rem; flex-shrink:0 }
+.nav-logo-mark {
+  width:36px; height:36px; background:var(--grad-mix);
+  border-radius:10px; display:grid; place-items:center; font-size:1.1rem;
+}
+.nav-logo-text {
+  font-family:'Playfair Display',serif; font-size:1.25rem; font-weight:700;
+  background:var(--grad-mix); -webkit-background-clip:text;
+  -webkit-text-fill-color:transparent; background-clip:text;
+}
+.nav-pills {
+  display:flex; align-items:center; gap:.25rem;
+  background:var(--off-white); border:1px solid var(--cream);
+  border-radius:var(--radius-pill); padding:.35rem;
+}
+.nav-pills a {
+  padding:.4rem .95rem; border-radius:var(--radius-pill);
+  font-size:.82rem; font-weight:500; color:#7a6e65;
+  transition:all .2s; white-space:nowrap;
+}
+.nav-pills a:hover { background:var(--brown-wash); color:var(--brown-dark) }
+.nav-pills a.active {
+  background:var(--brown-dark); color:var(--white);
+  box-shadow:0 2px 8px rgba(92,61,46,.25);
+}
+.nav-right { display:flex; gap:.6rem; flex-shrink:0 }
+@media(max-width:780px) { .nav-pills{display:none} .nav-right .btn-ghost{display:none} }
+
+/* ═══ BUTTONS ═══ */
+.btn {
+  display:inline-flex; align-items:center; gap:.45rem;
+  padding:.6rem 1.4rem; border-radius:var(--radius-pill);
+  font-family:'DM Sans',sans-serif; font-size:.875rem; font-weight:600;
+  cursor:pointer; border:none; transition:all .22s; white-space:nowrap; text-decoration:none;
+}
+.btn-ghost {
+  background:transparent; border:1.5px solid var(--warm-gray); color:var(--off-black);
+}
+.btn-ghost:hover { border-color:var(--brown-light); color:var(--brown-dark); background:var(--brown-wash) }
+.btn-brown { background:var(--brown-dark); color:var(--white) }
+.btn-brown:hover:not(:disabled) {
+  background:var(--brown-mid); transform:translateY(-1px);
+  box-shadow:0 6px 20px rgba(92,61,46,.35);
+}
+.btn-sky { background:var(--sky-dark); color:var(--white) }
+.btn-sky:hover:not(:disabled) {
+  background:var(--sky-mid); transform:translateY(-1px);
+  box-shadow:0 6px 20px rgba(43,95,122,.35);
+}
+.btn-outline {
+  background:transparent; border:1.5px solid var(--warm-gray); color:#6b6058;
+}
+.btn-outline:hover { border-color:var(--brown-light); color:var(--brown-dark); background:var(--brown-wash) }
+.btn-muted { background:transparent; border:1.5px solid var(--cream); color:var(--warm-gray) }
+.btn-muted:hover { border-color:var(--warm-gray); color:#6b6058; background:var(--off-white) }
+.btn:disabled { opacity:.35; cursor:not-allowed; transform:none!important; box-shadow:none!important }
+
+/* ═══ PAGE HERO ═══ */
+.page-hero {
+  background:var(--grad-subtle);
+  border-bottom:1px solid rgba(92,61,46,.1);
+  padding:2.8rem 0 2.5rem;
+  position:relative; overflow:hidden;
+  animation:fadeUp .5s .1s ease both;
+}
+.page-hero::before {
+  content:''; position:absolute; top:-60px; right:-80px;
+  width:420px; height:420px; border-radius:50%; pointer-events:none;
+  background:radial-gradient(circle,rgba(184,136,106,.12) 0%,transparent 70%);
+}
+.page-hero::after {
+  content:''; position:absolute; bottom:-60px; left:-80px;
+  width:350px; height:350px; border-radius:50%; pointer-events:none;
+  background:radial-gradient(circle,rgba(61,133,168,.08) 0%,transparent 70%);
+}
+@keyframes fadeUp { from{transform:translateY(20px);opacity:0} to{transform:translateY(0);opacity:1} }
+.page-hero-inner {
+  max-width:1300px; margin:0 auto; padding:0 2rem;
+  display:flex; align-items:center; justify-content:space-between;
+  flex-wrap:wrap; gap:1.5rem; position:relative; z-index:1;
+}
+.eyebrow {
+  display:inline-flex; align-items:center; gap:.5rem;
+  background:var(--white); border:1px solid var(--cream);
+  border-radius:var(--radius-pill); padding:.3rem .9rem .3rem .4rem;
+  font-size:.72rem; font-weight:600; color:var(--brown-dark);
+  margin-bottom:1rem; box-shadow:var(--shadow-sm);
+}
+.eyebrow .tag {
+  background:var(--grad-brown); color:var(--white);
+  padding:.18rem .6rem; border-radius:var(--radius-pill); font-size:.68rem; font-weight:700;
+}
+.page-hero h1 {
+  font-size:clamp(1.6rem,3.5vw,2.4rem); font-weight:700;
+  color:var(--black); margin-bottom:.5rem; line-height:1.15;
+}
+.page-hero h1 em {
+  font-style:normal;
+  background:var(--grad-brown); -webkit-background-clip:text;
+  -webkit-text-fill-color:transparent; background-clip:text;
+}
+.page-hero p { font-size:.9rem; color:#6b6058; font-weight:300; max-width:480px }
+.hero-chips { display:flex; gap:.6rem; flex-wrap:wrap; align-items:center }
+
+/* ═══ CHIPS ═══ */
+.chip {
+  display:inline-flex; align-items:center; gap:.4rem;
+  background:rgba(92,61,46,.08); border:1px solid rgba(92,61,46,.18);
+  color:var(--brown-dark); border-radius:var(--radius-pill);
+  padding:.35rem .85rem; font-size:.75rem; font-weight:600;
+}
+.chip.sky {
+  background:rgba(43,95,122,.1); border-color:rgba(43,95,122,.2); color:var(--sky-dark);
+}
+.chip-dot {
+  width:7px; height:7px; border-radius:50%;
+  background:var(--brown-mid); animation:pulse 2s infinite;
+}
+.chip.sky .chip-dot { background:var(--sky-mid) }
+@keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.4;transform:scale(.85)} }
+
+/* ═══ APP LAYOUT ═══ */
+.app-wrap {
+  max-width:1300px; margin:0 auto; padding:2rem;
+  display:grid; grid-template-columns:1fr 1fr; gap:1.75rem;
+  align-items:start; position:relative; z-index:1;
+  animation:fadeUp .5s .2s ease both;
+}
+@media(max-width:960px) { .app-wrap { grid-template-columns:1fr } }
+
+/* ═══ PANEL ═══ */
+.panel {
+  background:var(--white); border:1px solid var(--cream);
+  border-radius:var(--radius); overflow:hidden;
+  box-shadow:var(--shadow-sm); transition:box-shadow .25s;
+}
+.panel:hover { box-shadow:var(--shadow-md) }
+.panel-head {
+  display:flex; align-items:center; gap:.75rem;
+  padding:1.1rem 1.5rem; background:var(--off-white);
+  border-bottom:1px solid var(--cream);
+}
+.phi {
+  width:34px; height:34px; border-radius:9px;
+  display:grid; place-items:center; font-size:1rem; flex-shrink:0;
+}
+.phi-brown { background:var(--brown-wash) }
+.phi-sky   { background:var(--sky-wash) }
+.panel-head h2 {
+  font-family:'Playfair Display',serif; font-size:1rem;
+  font-weight:700; color:var(--near-black); flex:1;
+}
+.panel-body { padding:1.5rem }
+
+/* ═══ FORM ═══ */
+.sec-div {
+  display:flex; align-items:center; gap:.65rem;
+  margin:1.1rem 0 .9rem; font-size:.7rem; font-weight:700;
+  letter-spacing:.12em; text-transform:uppercase; color:var(--brown-mid);
+}
+.sec-div::after { content:''; flex:1; height:1px; background:var(--cream) }
+.fg  { display:grid; gap:.9rem }
+.fg2 { grid-template-columns:1fr 1fr }
+.fg3 { grid-template-columns:1fr 1fr 1fr }
+@media(max-width:500px) { .fg2,.fg3 { grid-template-columns:1fr } }
+.fg label {
+  display:block; margin-bottom:.38rem; font-size:.7rem; font-weight:700;
+  letter-spacing:.09em; text-transform:uppercase; color:var(--brown-mid);
+}
+input, select {
+  background:var(--off-white); border:1.5px solid var(--cream);
+  border-radius:var(--radius-sm); color:var(--off-black);
+  font-family:'DM Sans',sans-serif; font-size:.88rem;
+  padding:.65rem .9rem; width:100%; outline:none;
+  transition:all .2s; -webkit-appearance:none;
+}
+input:focus, select:focus {
+  border-color:var(--brown-light);
+  box-shadow:0 0 0 3px rgba(184,136,106,.15);
+  background:var(--white);
+}
+input.err { border-color:#c0392b; box-shadow:0 0 0 3px rgba(192,57,43,.1) }
+.err-msg { font-size:.7rem; color:#c0392b; font-weight:500; display:none }
+.err-msg.show { display:block }
+select option { background:var(--white) }
+.ro-field {
+  background:rgba(92,61,46,.06); border-color:rgba(92,61,46,.18);
+  color:var(--brown-dark); font-weight:600; font-size:.82rem; cursor:default;
+}
+.ro-field:focus { box-shadow:none; border-color:rgba(92,61,46,.2) }
+.cur-row { display:flex; align-items:center; gap:.6rem }
+.cur-badge {
+  flex-shrink:0; min-width:36px; height:38px;
+  border-radius:var(--radius-sm); background:var(--brown-wash);
+  border:1.5px solid rgba(92,61,46,.18); color:var(--brown-dark);
+  font-weight:700; font-size:.88rem; display:grid; place-items:center;
+}
+.cur-row select { flex:1 }
+.btn-row {
+  display:flex; gap:.7rem; flex-wrap:wrap;
+  padding:1.1rem 1.5rem; border-top:1px solid var(--cream);
+  background:var(--off-white);
+}
+
+/* ═══ EMPTY STATE ═══ */
+.empty-state {
+  display:flex; flex-direction:column; align-items:center;
+  justify-content:center; min-height:360px;
+  gap:1.1rem; padding:2.5rem;
+}
+.empty-icon { font-size:3.5rem; opacity:.2; animation:float 4s ease-in-out infinite }
+@keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-10px)} }
+.empty-state p {
+  font-size:.83rem; color:var(--warm-gray);
+  text-align:center; line-height:1.7; max-width:220px;
+}
+.empty-hint {
+  background:var(--off-white); border:1px solid var(--cream);
+  border-radius:var(--radius-sm); padding:.6rem 1rem;
+  font-size:.75rem; color:#8a7e75; text-align:center;
+}
+
+/* ═══ BILL PREVIEW (on-screen) ═══ */
+#bill-preview {
+  background:var(--white); color:var(--near-black);
+  font-family:'DM Sans',sans-serif;
+  border-radius:var(--radius-sm); overflow:hidden;
+  animation:fadeIn .35s ease both;
+}
+@keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+
+/* bill header — brown gradient (Tool 1 identity) */
+.bp-header {
+  background:linear-gradient(135deg,#2a1a10 0%,#5c3d2e 45%,#3d6050 80%,#2b5f7a 100%);
+  color:var(--white); padding:1.4rem 1.6rem;
+  display:flex; justify-content:space-between;
+  align-items:flex-start; flex-wrap:wrap; gap:1rem;
+}
+.bp-logo { display:flex; align-items:center; gap:.8rem }
+.bp-logo-mark {
+  width:40px; height:40px; background:var(--grad-brown);
+  border-radius:10px; display:grid; place-items:center;
+  font-size:1.3rem; flex-shrink:0;
+}
+.bp-org-name {
+  font-family:'Playfair Display',serif; font-size:1.15rem;
+  font-weight:700; line-height:1.2;
+}
+.bp-org-sub { font-size:.68rem; opacity:.6; letter-spacing:.06em; font-weight:300; margin-top:.1rem }
+.bp-meta { text-align:right }
+.bp-title {
+  font-family:'Playfair Display',serif; font-size:1.3rem; color:var(--brown-pale);
+}
+.bp-bill-num { font-size:.72rem; opacity:.55; margin-top:.15rem; font-weight:300 }
+.bp-body { padding:1.25rem 1.4rem }
+.bp-info-grid {
+  display:grid; grid-template-columns:1fr 1fr;
+  gap:.9rem; margin-bottom:1.1rem;
+}
+@media(max-width:480px) { .bp-info-grid { grid-template-columns:1fr } }
+.bp-box {
+  background:var(--off-white); border:1px solid var(--cream);
+  border-radius:var(--radius-sm); padding:.85rem 1rem;
+}
+.bp-box-title {
+  font-size:.62rem; font-weight:700; letter-spacing:.1em;
+  text-transform:uppercase; color:var(--brown-mid); margin-bottom:.55rem;
+}
+.bp-row {
+  display:flex; justify-content:space-between;
+  font-size:.8rem; color:#6b6058; margin-bottom:.22rem;
+}
+.bp-row:last-child { margin-bottom:0 }
+.bp-row span:last-child { font-weight:600; color:var(--near-black) }
+.bp-table {
+  width:100%; border-collapse:collapse;
+  font-size:.78rem; margin-bottom:1rem;
+}
+.bp-table thead th {
+  background:var(--near-black); color:var(--white);
+  padding:.6rem .75rem; text-align:left;
+  font-size:.64rem; font-weight:700;
+  letter-spacing:.09em; text-transform:uppercase;
+}
+.bp-table thead th:last-child,
+.bp-table td:last-child { text-align:right }
+.bp-table td {
+  padding:.52rem .75rem; border-bottom:1px solid var(--cream); color:#4a4038;
+}
+.bp-table tr:nth-child(even) td { background:var(--off-white) }
+.bp-total-row td {
+  background:var(--near-black)!important; color:var(--white)!important;
+  font-weight:700; font-size:.9rem!important; border:none!important;
+}
+.bp-total-row td:last-child { color:var(--brown-pale)!important; font-size:1rem!important }
+.bp-footer {
+  background:var(--off-white); border-top:1px solid var(--cream);
+  padding:.7rem 1.4rem; font-size:.7rem;
+  color:var(--warm-gray); text-align:center; font-style:italic;
+}
+
+/* ═══ PDF LOADER ═══ */
+#pdf-loader {
+  display:none; position:fixed; inset:0;
+  background:rgba(247,244,240,.92); backdrop-filter:blur(10px);
+  z-index:9999; flex-direction:column;
+  align-items:center; justify-content:center; gap:1.2rem;
+}
+#pdf-loader.on { display:flex }
+.pdf-spin {
+  width:52px; height:52px;
+  border:3px solid var(--cream); border-top-color:var(--brown-mid);
+  border-radius:50%; animation:spin .8s linear infinite;
+}
+@keyframes spin { to{transform:rotate(360deg)} }
+#pdf-loader p { color:var(--brown-dark); font-size:.95rem; font-weight:600 }
+
+/* ═══ HIDDEN PDF TEMPLATE ═══
+   795px = A4 at screen res. Explicit hex only — no CSS vars.
+═══ */
+#pdft {
+  position:fixed; left:-9999px; top:0;
+  width:795px; background:#ffffff;
+  font-family:'DM Sans',sans-serif; color:#1c1a18;
+  pointer-events:none;
+}
+/* PDF header */
+.ph {
+  background:linear-gradient(135deg,#2a1a10 0%,#5c3d2e 45%,#3d6050 80%,#2b5f7a 100%);
+  padding:26px 32px; display:flex;
+  justify-content:space-between; align-items:center;
+}
+.ph-left { display:flex; align-items:center; gap:14px }
+.ph-icon {
+  width:54px; height:54px; flex-shrink:0; border-radius:13px;
+  background:linear-gradient(135deg,#5c3d2e 0%,#b8886a 50%,#d9b89a 100%);
+  display:flex; align-items:center; justify-content:center; font-size:26px;
+}
+.ph-brand-name {
+  font-family:'Playfair Display',serif; font-size:22px;
+  font-weight:700; color:#ffffff; line-height:1.15;
+}
+.ph-brand-sub { font-size:11px; color:rgba(255,255,255,.5); letter-spacing:.07em; margin-top:3px }
+.ph-right { text-align:right }
+.ph-bill-name {
+  font-family:'Playfair Display',serif; font-size:24px;
+  font-weight:700; color:#d9b89a;
+}
+.ph-bill-ref { font-size:11px; color:rgba(255,255,255,.45); margin-top:5px; letter-spacing:.04em }
+/* PDF info boxes */
+.pi-row {
+  display:grid; grid-template-columns:1fr 1fr;
+  gap:12px; padding:20px 32px 4px;
+}
+.pi-box { background:#f7f4f0; border:1px solid #ede8e0; border-radius:9px; padding:14px 16px }
+.pi-title {
+  font-size:10px; font-weight:700; letter-spacing:.13em; text-transform:uppercase;
+  color:#8b5e3c; padding-bottom:8px; margin-bottom:8px; border-bottom:1px solid #ede8e0;
+}
+.pi-r {
+  display:flex; justify-content:space-between;
+  font-size:12px; color:#6b6058; margin-bottom:5px;
+}
+.pi-r:last-child { margin-bottom:0 }
+.pi-v { font-weight:600; color:#2a2420 }
+/* PDF section title */
+.ps-title {
+  font-size:11px; font-weight:700; letter-spacing:.13em; text-transform:uppercase;
+  color:#5c3d2e; padding:18px 32px 8px;
+  display:flex; align-items:center; gap:10px;
+}
+.ps-title::after { content:''; flex:1; height:1px; background:#ede8e0 }
+/* PDF table */
+.pt-wrap { padding:0 32px; margin-bottom:4px }
+.ptbl { width:100%; border-collapse:collapse; font-size:12px }
+.ptbl thead tr { background:#2a2420 }
+.ptbl thead th {
+  color:#ffffff; padding:9px 12px; text-align:left;
+  font-size:10px; font-weight:700; letter-spacing:.1em;
+  text-transform:uppercase; white-space:nowrap;
+}
+.ptbl thead th:last-child { text-align:right }
+.ptbl tbody td {
+  padding:8px 12px; border-bottom:1px solid #ede8e0;
+  color:#3a3228; font-size:12px;
+}
+.ptbl tbody td:last-child { text-align:right; font-weight:500 }
+.ptbl tbody tr:nth-child(even) td { background:#f7f4f0 }
+.ptbl .bold-row td { font-weight:700; color:#1c1a18; background:#f0e4d7!important }
+.ptbl .tot-row td {
+  background:#2a2420!important; color:#ffffff!important;
+  font-weight:700; font-size:14px;
+  padding:11px 12px!important; border:none!important;
+}
+.ptbl .tot-row td:last-child { color:#d9b89a!important; font-size:15px!important; text-align:right }
+/* PDF footer */
+.pf {
+  margin-top:20px; background:#f7f4f0; border-top:2px solid #ede8e0;
+  padding:14px 32px; display:flex;
+  align-items:center; justify-content:space-between; gap:16px;
+}
+.pf-brand { display:flex; align-items:center; gap:9px }
+.pf-icon {
+  width:30px; height:30px; flex-shrink:0;
+  background:linear-gradient(135deg,#5c3d2e,#2b5f7a);
+  border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:15px;
+}
+.pf-name {
+  font-family:'Playfair Display',serif; font-size:14px;
+  font-weight:700; color:#5c3d2e;
+}
+.pf-disc {
+  font-size:9.5px; color:#c8bfb2; font-style:italic;
+  text-align:right; line-height:1.5; max-width:400px;
+}
+
+/* ═══ PRINT ═══ */
+@media print {
+  .nav,.page-hero,.btn-row,.left-panel { display:none!important }
+  .app-wrap { display:block!important; padding:0!important }
+  .panel { box-shadow:none!important; border:none!important }
+  #bill-preview { display:block!important }
+  .empty-state { display:none!important }
+}
+</style>
+</head>
+<body>
+
+<!-- ═══ NAV ═══ -->
+<nav class="nav">
+  <div class="nav-inner">
+    <a href="index.html" class="nav-logo">
+      <div class="nav-logo-mark">⚡</div>
+      <span class="nav-logo-text">ElectroCalc</span>
+    </a>
+    <div class="nav-pills">
+      <a href="electricity_bill_generator.html" class="active">⚡ Meter-Based</a>
+      <a href="appliance_bill_generator.html">🔌 Appliance-Based</a>
+    </div>
+    <div class="nav-right">
+      <a href="index.html" class="btn btn-ghost">← Back to Home</a>
+      <a href="appliance_bill_generator.html" class="btn btn-sky">Try Appliance Tool</a>
+    </div>
+  </div>
+</nav>
+
+<!-- ═══ PAGE HERO ═══ -->
+<div class="page-hero">
+  <div class="page-hero-inner">
+    <div>
+      <div class="eyebrow">
+        <span class="tag">Tool 1</span> Meter Reading — Electricity Bill Generator
+      </div>
+      <h1>Generate Your <em>Electricity Bill</em><br>from Meter Readings</h1>
+      <p>Enter previous &amp; current meter readings, set your charges, choose your currency — get a professional bill instantly.</p>
+    </div>
+    <div class="hero-chips">
+      <div class="chip"><div class="chip-dot"></div> Live Preview</div>
+      <div class="chip sky">🔒 No Data Stored</div>
+      <div class="chip sky">🌍 15 Currencies</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ APP ═══ -->
+<div class="app-wrap">
+
+  <!-- LEFT: Form -->
+  <div class="left-panel">
+    <div class="panel">
+      <div class="panel-head">
+        <div class="phi phi-brown">📋</div>
+        <h2>Bill Details</h2>
+        <div class="chip" style="margin-left:auto;font-size:.68rem;padding:.25rem .65rem">
+          <div class="chip-dot"></div>Live
+        </div>
+      </div>
+
+      <div class="panel-body">
+        <div class="fg">
+
+          <div class="sec-div">Consumer Information</div>
+          <div class="fg fg2">
+            <div>
+              <label>Consumer Name</label>
+              <input type="text" id="consumerName" placeholder="e.g. Rajesh Kumar" oninput="updateBill()">
+            </div>
+            <div>
+              <label>Meter Number</label>
+              <input type="text" id="meterNumber" placeholder="e.g. MTR-007423" oninput="updateBill()">
+            </div>
+          </div>
+
+          <div>
+            <label>Area / Location</label>
+            <input type="text" id="area" placeholder="e.g. 42 Greenfield Road, Mumbai" oninput="updateBill()">
+          </div>
+
+          <div class="fg fg2">
+            <div>
+              <label>Billing Month &amp; Year</label>
+              <input type="month" id="billingMonth" oninput="updateBill()">
+            </div>
+            <div>
+              <label>Currency</label>
+              <div class="cur-row">
+                <span class="cur-badge" id="curBadge">₹</span>
+                <select id="currency" onchange="updateBill()">
+                  <option value="INR|₹">INR – Indian Rupee (₹)</option>
+                  <option value="USD|$">USD – US Dollar ($)</option>
+                  <option value="EUR|€">EUR – Euro (€)</option>
+                  <option value="GBP|£">GBP – British Pound (£)</option>
+                  <option value="PKR|₨">PKR – Pakistani Rupee (₨)</option>
+                  <option value="BDT|৳">BDT – Bangladeshi Taka (৳)</option>
+                  <option value="AED|د.إ">AED – UAE Dirham (د.إ)</option>
+                  <option value="SAR|﷼">SAR – Saudi Riyal (﷼)</option>
+                  <option value="AUD|A$">AUD – Australian Dollar (A$)</option>
+                  <option value="CAD|C$">CAD – Canadian Dollar (C$)</option>
+                  <option value="SGD|S$">SGD – Singapore Dollar (S$)</option>
+                  <option value="MYR|RM">MYR – Malaysian Ringgit (RM)</option>
+                  <option value="LKR|Rs">LKR – Sri Lankan Rupee (Rs)</option>
+                  <option value="NPR|Rs">NPR – Nepalese Rupee (Rs)</option>
+                  <option value="ZAR|R">ZAR – South African Rand (R)</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div class="fg fg2">
+            <div>
+              <label>Bill Number</label>
+              <input type="text" id="billNumber" class="ro-field" readonly>
+            </div>
+            <div>
+              <label>Generation Date</label>
+              <input type="text" id="genDate" class="ro-field" readonly>
+            </div>
+          </div>
+
+          <div class="sec-div">Meter Readings</div>
+          <div class="fg fg2">
+            <div>
+              <label>Previous Reading (kWh)</label>
+              <input type="number" id="prevReading" placeholder="e.g. 4820" min="0"
+                     oninput="validateReadings(); updateBill()">
+              <span class="err-msg" id="prevErr">Value must be ≥ 0</span>
+            </div>
+            <div>
+              <label>Current Reading (kWh)</label>
+              <input type="number" id="currReading" placeholder="e.g. 5240" min="0"
+                     oninput="validateReadings(); updateBill()">
+              <span class="err-msg" id="currErr">Must be ≥ Previous Reading</span>
+            </div>
+          </div>
+
+          <div class="sec-div">Charges</div>
+          <div class="fg fg2">
+            <div>
+              <label>Per Unit Charge (per kWh)</label>
+              <input type="number" id="perUnit" placeholder="e.g. 6.50" min="0" step="0.01" oninput="updateBill()">
+            </div>
+            <div>
+              <label>Fixed Charge</label>
+              <input type="number" id="fixedCharge" placeholder="e.g. 120.00" min="0" step="0.01" oninput="updateBill()">
+            </div>
+            <div>
+              <label>Other Charges <small style="font-size:.6rem;text-transform:none;letter-spacing:0;color:var(--warm-gray)">(optional)</small></label>
+              <input type="number" id="otherCharges" placeholder="0.00" min="0" step="0.01" oninput="updateBill()">
+            </div>
+            <div>
+              <label>Tax / Duty (%)</label>
+              <input type="number" id="taxRate" placeholder="e.g. 9" min="0" max="100" step="0.01" oninput="updateBill()">
+            </div>
+          </div>
+
+        </div>
+      </div><!-- /panel-body -->
+
+      <div class="btn-row">
+        <button class="btn btn-brown"   id="downloadPdf"  onclick="downloadPDF()"    disabled>⬇ Download PDF</button>
+        <button class="btn btn-sky"     id="downloadXlsx" onclick="downloadExcel()"  disabled>⬇ Download Excel</button>
+        <button class="btn btn-outline" onclick="window.print()">🖨 Print</button>
+        <button class="btn btn-muted"   onclick="resetForm()">↺ Reset</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT: Bill Preview -->
+  <div class="right-panel">
+    <div class="panel">
+      <div class="panel-head">
+        <div class="phi phi-sky">👁</div>
+        <h2>Bill Preview</h2>
+        <div class="chip sky" style="margin-left:auto;font-size:.68rem;padding:.25rem .65rem">
+          <div class="chip-dot"></div>Live
+        </div>
+      </div>
+      <div id="bill-wrapper">
+        <div class="empty-state" id="empty-state">
+          <div class="empty-icon">⚡</div>
+          <p>Fill in the form to generate your live bill preview</p>
+          <div class="empty-hint">Start with Consumer Name →</div>
+        </div>
+        <div id="bill-preview" style="display:none"></div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /app-wrap -->
+
+<!-- PDF LOADER -->
+<div id="pdf-loader">
+  <div class="pdf-spin"></div>
+  <p>Generating your PDF…</p>
+</div>
+
+<!-- HIDDEN PDF TEMPLATE (off-screen, captured by html2canvas) -->
+<div id="pdft">
+  <div class="ph">
+    <div class="ph-left">
+      <div class="ph-icon">⚡</div>
+      <div>
+        <div class="ph-brand-name">ElectroCalc</div>
+        <div class="ph-brand-sub">Meter-Based Electricity Bill Generator</div>
+      </div>
+    </div>
+    <div class="ph-right">
+      <div class="ph-bill-name">Electricity Bill</div>
+      <div class="ph-bill-ref" id="pdf-ref">—</div>
+    </div>
+  </div>
+
+  <div class="pi-row">
+    <div class="pi-box">
+      <div class="pi-title">Consumer Details</div>
+      <div class="pi-r"><span>Name</span>           <span class="pi-v" id="pdf-name">—</span></div>
+      <div class="pi-r"><span>Meter Number</span>   <span class="pi-v" id="pdf-meter">—</span></div>
+      <div class="pi-r"><span>Location</span>       <span class="pi-v" id="pdf-area">—</span></div>
+      <div class="pi-r"><span>Currency</span>       <span class="pi-v" id="pdf-cur">—</span></div>
+    </div>
+    <div class="pi-box">
+      <div class="pi-title">Bill Information</div>
+      <div class="pi-r"><span>Bill Number</span>    <span class="pi-v" id="pdf-bnum">—</span></div>
+      <div class="pi-r"><span>Generated On</span>   <span class="pi-v" id="pdf-bdate">—</span></div>
+      <div class="pi-r"><span>Billing Period</span> <span class="pi-v" id="pdf-period">—</span></div>
+      <div class="pi-r"><span>Units Consumed</span> <span class="pi-v" id="pdf-units">—</span></div>
+    </div>
+  </div>
+
+  <div class="ps-title">Meter Readings</div>
+  <div class="pt-wrap">
+    <table class="ptbl">
+      <thead><tr><th>Description</th><th>Value</th></tr></thead>
+      <tbody>
+        <tr><td>Previous Reading</td><td id="pdf-prev">—</td></tr>
+        <tr><td>Current Reading</td><td id="pdf-curr">—</td></tr>
+        <tr class="bold-row"><td>Units Consumed</td><td id="pdf-units2">—</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="ps-title">Charges Breakdown</div>
+  <div class="pt-wrap">
+    <table class="ptbl">
+      <thead><tr><th>Description</th><th>Amount</th></tr></thead>
+      <tbody id="pdf-charge-rows"></tbody>
+    </table>
+  </div>
+
+  <div class="pf">
+    <div class="pf-brand">
+      <div class="pf-icon">⚡</div>
+      <span class="pf-name">ElectroCalc</span>
+    </div>
+    <div class="pf-disc">
+      ⚠ This is a system-generated electricity bill preview for estimation purposes only.<br>
+      Not an official utility bill. Do not use for legal or regulatory purposes.
+    </div>
+  </div>
+</div><!-- /pdft -->
+
+<script>
+/* ─── INIT ─── */
+const now = new Date();
+const $   = id => document.getElementById(id);
+const fv  = id => parseFloat($(id).value) || 0;
+const tv  = id => ($(id).value || '').trim();
+const fmt = n  => parseFloat(n).toFixed(2);
+
+$('billNumber').value   = 'BILL-' + (Math.floor(Math.random() * 90000) + 10000);
+$('genDate').value      = now.toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' });
+$('billingMonth').value = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+
+/* ─── HELPERS ─── */
+function getCur() {
+  const v = $('currency').value.split('|');
+  return { code: v[0], sym: v[1] };
+}
+function getMonthStr() {
+  const mv = $('billingMonth').value;
+  return mv ? new Date(mv + '-01').toLocaleDateString('en-GB', { month:'long', year:'numeric' }) : '—';
+}
+function calcData() {
+  const prev    = fv('prevReading'), curr    = fv('currReading');
+  const perUnit = fv('perUnit'),     fixed   = fv('fixedCharge');
+  const other   = fv('otherCharges'), taxRate = fv('taxRate');
+  const units   = Math.max(0, curr - prev);
+  const eCh     = units * perUnit;
+  const sub     = eCh + fixed + other;
+  const taxAmt  = sub * (taxRate / 100);
+  const total   = sub + taxAmt;
+  return { prev, curr, perUnit, fixed, other, taxRate, units, eCh, sub, taxAmt, total };
+}
+
+/* ─── VALIDATION ─── */
+function validateReadings() {
+  const prev = parseFloat($('prevReading').value);
+  const curr = parseFloat($('currReading').value);
+  let ok = true;
+  if (!isNaN(prev) && prev < 0) {
+    $('prevReading').classList.add('err'); $('prevErr').classList.add('show'); ok = false;
+  } else { $('prevReading').classList.remove('err'); $('prevErr').classList.remove('show'); }
+  if (!isNaN(curr) && !isNaN(prev) && curr < prev) {
+    $('currReading').classList.add('err'); $('currErr').classList.add('show'); ok = false;
+  } else { $('currReading').classList.remove('err'); $('currErr').classList.remove('show'); }
+  return ok;
+}
+function isFormValid() {
+  if (!validateReadings()) return false;
+  return tv('consumerName') && tv('meterNumber') &&
+         $('billingMonth').value && fv('perUnit') > 0 &&
+         fv('currReading') >= fv('prevReading');
+}
+
+/* ─── LIVE BILL UPDATE ─── */
+function updateBill() {
+  const { sym, code } = getCur();
+  $('curBadge').textContent = sym;
+
+  const valid = isFormValid();
+  $('downloadPdf').disabled  = !valid;
+  $('downloadXlsx').disabled = !valid;
+
+  if (!tv('consumerName') && !tv('meterNumber')) {
+    $('bill-preview').style.display = 'none';
+    $('empty-state').style.display  = 'flex';
+    return;
+  }
+  $('empty-state').style.display  = 'none';
+  $('bill-preview').style.display = 'block';
+  $('bill-preview').style.animation = 'none';
+  void $('bill-preview').offsetWidth;
+  $('bill-preview').style.animation = '';
+
+  const d  = calcData();
+  const nm = tv('consumerName') || '—', mtr = tv('meterNumber') || '—';
+  const ar = tv('area') || '—',         bn  = $('billNumber').value;
+  const gd = $('genDate').value,         ms  = getMonthStr();
+
+  $('bill-preview').innerHTML = `
+  <div class="bp-header">
+    <div class="bp-logo">
+      <div class="bp-logo-mark">⚡</div>
+      <div>
+        <div class="bp-org-name">ElectroCalc</div>
+        <div class="bp-org-sub">Electricity Bill Generator</div>
+      </div>
+    </div>
+    <div class="bp-meta">
+      <div class="bp-title">Electricity Bill</div>
+      <div class="bp-bill-num">${bn} &nbsp;·&nbsp; ${ms}</div>
+    </div>
+  </div>
+  <div class="bp-body">
+    <div class="bp-info-grid">
+      <div class="bp-box">
+        <div class="bp-box-title">Consumer Details</div>
+        <div class="bp-row"><span>Name</span><span>${nm}</span></div>
+        <div class="bp-row"><span>Meter No.</span><span>${mtr}</span></div>
+        <div class="bp-row"><span>Location</span><span>${ar}</span></div>
+        <div class="bp-row"><span>Currency</span><span>${code} (${sym})</span></div>
+      </div>
+      <div class="bp-box">
+        <div class="bp-box-title">Bill Information</div>
+        <div class="bp-row"><span>Bill No.</span><span>${bn}</span></div>
+        <div class="bp-row"><span>Generated</span><span>${gd}</span></div>
+        <div class="bp-row"><span>Period</span><span>${ms}</span></div>
+        <div class="bp-row"><span>Units</span><span>${fmt(d.units)} kWh</span></div>
+      </div>
+    </div>
+    <table class="bp-table">
+      <thead><tr><th>Reading Details</th><th>Value</th></tr></thead>
+      <tbody>
+        <tr><td>Previous Reading</td><td>${fmt(d.prev)} kWh</td></tr>
+        <tr><td>Current Reading</td><td>${fmt(d.curr)} kWh</td></tr>
+        <tr><td><strong>Units Consumed</strong></td><td><strong>${fmt(d.units)} kWh</strong></td></tr>
+      </tbody>
+    </table>
+    <table class="bp-table">
+      <thead><tr><th>Charge Description</th><th>Amount (${sym})</th></tr></thead>
+      <tbody>
+        <tr><td>Energy Charge (${fmt(d.units)} kWh × ${sym}${fmt(d.perUnit)})</td><td>${sym} ${fmt(d.eCh)}</td></tr>
+        <tr><td>Fixed Charge</td><td>${sym} ${fmt(d.fixed)}</td></tr>
+        ${d.other > 0 ? `<tr><td>Other Charges</td><td>${sym} ${fmt(d.other)}</td></tr>` : ''}
+        <tr><td>Subtotal</td><td>${sym} ${fmt(d.sub)}</td></tr>
+        <tr><td>Tax / Duty (${fmt(d.taxRate)}%)</td><td>${sym} ${fmt(d.taxAmt)}</td></tr>
+        <tr class="bp-total-row"><td>TOTAL PAYABLE</td><td>${sym} ${fmt(d.total)}</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="bp-footer">⚠ System-generated electricity bill preview for estimation purposes only. Not an official utility bill.</div>`;
+}
+
+/* ─── PDF via html2canvas ─── */
+function downloadPDF() {
+  const { sym, code } = getCur();
+  const d  = calcData();
+  const nm = tv('consumerName') || '—', mtr = tv('meterNumber') || '—';
+  const ar = tv('area') || '—',         bn  = $('billNumber').value;
+  const gd = $('genDate').value,         ms  = getMonthStr();
+
+  $('pdf-ref').textContent    = `${bn}  ·  ${ms}`;
+  $('pdf-name').textContent   = nm;
+  $('pdf-meter').textContent  = mtr;
+  $('pdf-area').textContent   = ar;
+  $('pdf-cur').textContent    = `${code} (${sym})`;
+  $('pdf-bnum').textContent   = bn;
+  $('pdf-bdate').textContent  = gd;
+  $('pdf-period').textContent = ms;
+  $('pdf-units').textContent  = `${fmt(d.units)} kWh`;
+  $('pdf-prev').textContent   = `${fmt(d.prev)} kWh`;
+  $('pdf-curr').textContent   = `${fmt(d.curr)} kWh`;
+  $('pdf-units2').textContent = `${fmt(d.units)} kWh`;
+
+  const rows = [
+    [`Energy Charge (${fmt(d.units)} kWh × ${sym}${fmt(d.perUnit)})`, `${sym} ${fmt(d.eCh)}`],
+    [`Fixed Charge`, `${sym} ${fmt(d.fixed)}`],
+    ...(d.other > 0 ? [[`Other Charges`, `${sym} ${fmt(d.other)}`]] : []),
+    [`Subtotal`, `${sym} ${fmt(d.sub)}`],
+    [`Tax / Duty (${fmt(d.taxRate)}%)`, `${sym} ${fmt(d.taxAmt)}`],
+  ];
+  $('pdf-charge-rows').innerHTML =
+    rows.map(r => `<tr><td>${r[0]}</td><td>${r[1]}</td></tr>`).join('') +
+    `<tr class="tot-row"><td>TOTAL PAYABLE</td><td>${sym} ${fmt(d.total)}</td></tr>`;
+
+  const loader = $('pdf-loader');
+  loader.classList.add('on');
+
+  setTimeout(() => {
+    html2canvas($('pdft'), {
+      scale:2, useCORS:true, allowTaint:true,
+      backgroundColor:'#ffffff', width:795, windowWidth:795, logging:false
+    }).then(canvas => {
+      const { jsPDF } = window.jspdf;
+      const doc  = new jsPDF({ format:'a4', unit:'mm', orientation:'portrait' });
+      const pgW  = 210, pgH = 297;
+      const imgH = (canvas.height * pgW) / canvas.width;
+
+      if (imgH <= pgH) {
+        doc.addImage(canvas.toDataURL('image/jpeg', 0.96), 'JPEG', 0, 0, pgW, imgH);
+      } else {
+        const pxPerPage = Math.floor(canvas.width * pgH / pgW);
+        let offset = 0;
+        while (offset < canvas.height) {
+          const sliceH = Math.min(pxPerPage, canvas.height - offset);
+          const pg = document.createElement('canvas');
+          pg.width = canvas.width; pg.height = sliceH;
+          pg.getContext('2d').drawImage(canvas, 0, -offset);
+          if (offset > 0) doc.addPage();
+          doc.addImage(pg.toDataURL('image/jpeg', 0.96), 'JPEG', 0, 0, pgW, (sliceH * pgW) / canvas.width);
+          offset += sliceH;
+        }
+      }
+      const mNum = tv('meterNumber').replace(/[^a-zA-Z0-9]/g, '') || 'unknown';
+      const mStr = $('billingMonth').value.replace('-', '') || 'unknown';
+      doc.save(`electricity_bill_${mNum}_${mStr}.pdf`);
+      loader.classList.remove('on');
+    }).catch(() => loader.classList.remove('on'));
+  }, 200);
+}
+
+/* ─── EXCEL ─── */
+function downloadExcel() {
+  const { sym, code } = getCur();
+  const d  = calcData();
+  const nm = tv('consumerName') || '—', mtr = tv('meterNumber') || '—';
+  const ar = tv('area') || '—',         bn  = $('billNumber').value;
+  const gd = $('genDate').value,         ms  = getMonthStr();
+
+  const data = [
+    ['ELECTRICITY BILL — ESTIMATION TOOL (ElectroCalc)'],
+    [],['CONSUMER DETAILS'],
+    ['Consumer Name', nm], ['Meter Number', mtr], ['Area / Location', ar],
+    ['Billing Month', ms], ['Bill Number', bn], ['Generated On', gd],
+    ['Currency', `${code} (${sym})`],
+    [],['METER READINGS'],['Description','Value','Unit'],
+    ['Previous Reading', d.prev, 'kWh'],
+    ['Current Reading',  d.curr, 'kWh'],
+    ['Units Consumed', parseFloat(fmt(d.units)), 'kWh'],
+    [],['CHARGES BREAKDOWN'],['Description', `Amount (${sym})`],
+    [`Energy Charge (${fmt(d.units)} kWh × ${sym}${fmt(d.perUnit)})`, parseFloat(fmt(d.eCh))],
+    ['Fixed Charge', parseFloat(fmt(d.fixed))],
+    ...(d.other > 0 ? [['Other Charges', parseFloat(fmt(d.other))]] : []),
+    ['Subtotal', parseFloat(fmt(d.sub))],
+    [`Tax / Duty (${fmt(d.taxRate)}%)`, parseFloat(fmt(d.taxAmt))],
+    ['TOTAL PAYABLE', parseFloat(fmt(d.total))],
+    [],['DISCLAIMER: System-generated estimate only. Not an official utility bill.']
+  ];
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.aoa_to_sheet(data);
+  ws['!cols'] = [{ wch:48 }, { wch:18 }, { wch:10 }];
+  XLSX.utils.book_append_sheet(wb, ws, 'Electricity Bill');
+  const mNum = tv('meterNumber').replace(/[^a-zA-Z0-9]/g,'') || 'unknown';
+  const mStr = $('billingMonth').value.replace('-','') || 'unknown';
+  XLSX.writeFile(wb, `electricity_bill_${mNum}_${mStr}.xlsx`);
+}
+
+/* ─── RESET ─── */
+function resetForm() {
+  ['consumerName','meterNumber','area','prevReading','currReading',
+   'perUnit','fixedCharge','otherCharges','taxRate'].forEach(id => $(id).value = '');
+  $('currency').value       = 'INR|₹';
+  $('curBadge').textContent = '₹';
+  $('billingMonth').value   = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  $('billNumber').value     = 'BILL-' + (Math.floor(Math.random() * 90000) + 10000);
+  document.querySelectorAll('input.err').forEach(el => el.classList.remove('err'));
+  document.querySelectorAll('.err-msg.show').forEach(el => el.classList.remove('show'));
+  $('bill-preview').style.display = 'none';
+  $('empty-state').style.display  = 'flex';
+  $('downloadPdf').disabled  = true;
+  $('downloadXlsx').disabled = true;
+}
+
+updateBill();
+</script>
+</body>
+</html>

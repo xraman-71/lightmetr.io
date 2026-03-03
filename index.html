@@ -1,0 +1,1933 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ElectroCalc — Electricity Bill Generator Tools</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,300&display=swap" rel="stylesheet">
+<style>
+/* ═══════════════════════════════════════
+   DESIGN TOKENS
+═══════════════════════════════════════ */
+:root {
+  --black: #0e0e0e;
+  --off-black: #1c1a18;
+  --near-black: #2a2420;
+  --white: #ffffff;
+  --off-white: #f7f4f0;
+  --cream: #ede8e0;
+  --warm-gray: #c8bfb2;
+  --brown-dark: #5c3d2e;
+  --brown-mid: #8b5e3c;
+  --brown-light: #b8886a;
+  --brown-pale: #d9b89a;
+  --brown-wash: #f0e4d7;
+  --sky-dark: #2b5f7a;
+  --sky-mid: #3d85a8;
+  --sky-light: #6aadcc;
+  --sky-pale: #a8d4e8;
+  --sky-wash: #dff0f8;
+  --grad-brown: linear-gradient(135deg, #5c3d2e 0%, #b8886a 50%, #d9b89a 100%);
+  --grad-sky: linear-gradient(135deg, #2b5f7a 0%, #3d85a8 50%, #6aadcc 100%);
+  --grad-mix: linear-gradient(135deg, #3d2b1f 0%, #5c3d2e 30%, #2b5f7a 70%, #3d85a8 100%);
+  --grad-subtle: linear-gradient(160deg, #f7f4f0 0%, #dff0f8 40%, #f0e4d7 100%);
+  --shadow-sm: 0 2px 12px rgba(92,61,46,0.08);
+  --shadow-md: 0 8px 40px rgba(92,61,46,0.12);
+  --shadow-lg: 0 20px 80px rgba(92,61,46,0.16);
+  --radius: 16px;
+  --radius-sm: 10px;
+  --radius-pill: 100px;
+}
+
+/* ═══════════════════════════════════════
+   RESET & BASE
+═══════════════════════════════════════ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; font-size: 16px; }
+body {
+  background: var(--white);
+  color: var(--off-black);
+  font-family: 'DM Sans', sans-serif;
+  font-weight: 400;
+  line-height: 1.7;
+  -webkit-font-smoothing: antialiased;
+}
+h1,h2,h3,h4 { font-family: 'Playfair Display', serif; line-height: 1.2; }
+a { text-decoration: none; color: inherit; }
+img { max-width: 100%; }
+section { position: relative; }
+
+/* ═══════════════════════════════════════
+   SCROLLBAR
+═══════════════════════════════════════ */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--off-white); }
+::-webkit-scrollbar-thumb { background: var(--brown-light); border-radius: 3px; }
+
+/* ═══════════════════════════════════════
+   UTILITY
+═══════════════════════════════════════ */
+.container { max-width: 1160px; margin: 0 auto; padding: 0 2rem; }
+.container-sm { max-width: 780px; margin: 0 auto; padding: 0 2rem; }
+.text-center { text-align: center; }
+.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); }
+
+/* ═══════════════════════════════════════
+   NAV
+═══════════════════════════════════════ */
+.nav {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: rgba(255,255,255,0.92);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid rgba(92,61,46,0.08);
+}
+.nav-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.1rem 2rem;
+  max-width: 1160px;
+  margin: 0 auto;
+  gap: 2rem;
+}
+.nav-logo {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-shrink: 0;
+}
+.nav-logo-mark {
+  width: 36px; height: 36px;
+  background: var(--grad-mix);
+  border-radius: 10px;
+  display: grid; place-items: center;
+  font-size: 1.1rem;
+}
+.nav-logo-text {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.3rem;
+  font-weight: 700;
+  background: var(--grad-mix);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.nav-links {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  list-style: none;
+}
+.nav-links a {
+  padding: 0.45rem 0.9rem;
+  border-radius: var(--radius-pill);
+  font-size: 0.88rem;
+  font-weight: 500;
+  color: var(--near-black);
+  transition: all 0.2s;
+}
+.nav-links a:hover {
+  background: var(--brown-wash);
+  color: var(--brown-dark);
+}
+.nav-cta {
+  display: flex;
+  gap: 0.6rem;
+  flex-shrink: 0;
+}
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.6rem 1.4rem;
+  border-radius: var(--radius-pill);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: all 0.25s;
+  white-space: nowrap;
+}
+.btn-ghost {
+  background: transparent;
+  border: 1.5px solid var(--warm-gray);
+  color: var(--off-black);
+}
+.btn-ghost:hover { border-color: var(--brown-light); color: var(--brown-dark); background: var(--brown-wash); }
+.btn-brown {
+  background: var(--brown-dark);
+  color: var(--white);
+}
+.btn-brown:hover { background: var(--brown-mid); transform: translateY(-1px); box-shadow: 0 6px 20px rgba(92,61,46,0.35); }
+.btn-sky {
+  background: var(--sky-dark);
+  color: var(--white);
+}
+.btn-sky:hover { background: var(--sky-mid); transform: translateY(-1px); box-shadow: 0 6px 20px rgba(43,95,122,0.35); }
+.btn-outline-brown {
+  background: transparent;
+  border: 1.5px solid var(--brown-mid);
+  color: var(--brown-dark);
+}
+.btn-outline-brown:hover { background: var(--brown-wash); }
+.btn-outline-sky {
+  background: transparent;
+  border: 1.5px solid var(--sky-mid);
+  color: var(--sky-dark);
+}
+.btn-outline-sky:hover { background: var(--sky-wash); }
+.btn-lg { padding: 0.85rem 2rem; font-size: 1rem; }
+.nav-mobile-toggle {
+  display: none;
+  background: none;
+  border: 1.5px solid var(--warm-gray);
+  color: var(--off-black);
+  width: 38px; height: 38px;
+  border-radius: 9px;
+  cursor: pointer;
+  font-size: 1.1rem;
+  align-items: center;
+  justify-content: center;
+}
+@media (max-width: 860px) {
+  .nav-links, .nav-cta { display: none; }
+  .nav-mobile-toggle { display: flex; }
+  .nav-links.open, .nav-cta.open {
+    display: flex;
+    flex-direction: column;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: var(--white);
+    border-bottom: 1px solid var(--cream);
+    padding: 1rem 2rem;
+    gap: 0.5rem;
+    box-shadow: var(--shadow-md);
+  }
+  .nav-links.open { align-items: flex-start; }
+  .nav-cta.open { flex-direction: row; padding-top: 0; }
+}
+
+/* ═══════════════════════════════════════
+   HERO
+═══════════════════════════════════════ */
+.hero {
+  background: var(--grad-subtle);
+  overflow: hidden;
+  padding: 6rem 0 5rem;
+}
+.hero::before {
+  content: '';
+  position: absolute;
+  top: -80px; right: -100px;
+  width: 600px; height: 600px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(61,133,168,0.1) 0%, transparent 70%);
+  pointer-events: none;
+}
+.hero::after {
+  content: '';
+  position: absolute;
+  bottom: -80px; left: -100px;
+  width: 500px; height: 500px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(184,136,106,0.12) 0%, transparent 70%);
+  pointer-events: none;
+}
+.hero-inner {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4rem;
+  align-items: center;
+  position: relative;
+  z-index: 1;
+}
+@media (max-width: 780px) { .hero-inner { grid-template-columns: 1fr; text-align: center; } }
+.hero-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: var(--white);
+  border: 1px solid var(--cream);
+  border-radius: var(--radius-pill);
+  padding: 0.35rem 1rem 0.35rem 0.45rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--brown-dark);
+  margin-bottom: 1.5rem;
+  box-shadow: var(--shadow-sm);
+}
+.hero-eyebrow span {
+  background: var(--grad-brown);
+  color: white;
+  padding: 0.2rem 0.6rem;
+  border-radius: var(--radius-pill);
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+.hero h1 {
+  font-size: clamp(2.2rem, 4.5vw, 3.4rem);
+  font-weight: 700;
+  color: var(--black);
+  margin-bottom: 1.2rem;
+  line-height: 1.15;
+}
+.hero h1 em {
+  font-style: normal;
+  background: var(--grad-mix);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.hero-desc {
+  font-size: 1.05rem;
+  color: #5a5248;
+  font-weight: 300;
+  line-height: 1.8;
+  margin-bottom: 2.2rem;
+  max-width: 480px;
+}
+@media (max-width: 780px) { .hero-desc { margin: 0 auto 2.2rem; } }
+.hero-actions {
+  display: flex;
+  gap: 0.85rem;
+  flex-wrap: wrap;
+}
+@media (max-width: 780px) { .hero-actions { justify-content: center; } }
+.hero-visual {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+@media (max-width: 780px) { .hero-visual { display: none; } }
+.hero-card {
+  background: var(--white);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-md);
+  padding: 1.4rem 1.6rem;
+  border: 1px solid var(--cream);
+  position: relative;
+  overflow: hidden;
+}
+.hero-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+}
+.hero-card.card-brown::before { background: var(--grad-brown); }
+.hero-card.card-sky::before { background: var(--grad-sky); }
+.card-tag {
+  display: inline-block;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 0.2rem 0.65rem;
+  border-radius: var(--radius-pill);
+  margin-bottom: 0.6rem;
+}
+.tag-brown { background: var(--brown-wash); color: var(--brown-dark); }
+.tag-sky { background: var(--sky-wash); color: var(--sky-dark); }
+.hero-card h3 { font-size: 1rem; font-weight: 600; margin-bottom: 0.3rem; color: var(--near-black); }
+.hero-card p { font-size: 0.83rem; color: #7a6e65; line-height: 1.6; }
+.hero-stat-row {
+  display: flex;
+  gap: 1rem;
+  margin-top: 0.8rem;
+}
+.hero-stat {
+  flex: 1;
+  background: var(--off-white);
+  border-radius: var(--radius-sm);
+  padding: 0.55rem 0.75rem;
+  text-align: center;
+}
+.hero-stat-num {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--brown-dark);
+  display: block;
+}
+.hero-stat-label { font-size: 0.68rem; color: #8a7e75; }
+.hero-trust {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--cream);
+}
+@media (max-width: 780px) { .hero-trust { justify-content: center; } }
+.hero-trust p { font-size: 0.8rem; color: #8a7e75; }
+.trust-badges { display: flex; gap: 0.6rem; flex-wrap: wrap; }
+.trust-badge {
+  background: var(--white);
+  border: 1px solid var(--cream);
+  border-radius: var(--radius-pill);
+  padding: 0.3rem 0.8rem;
+  font-size: 0.73rem;
+  font-weight: 600;
+  color: var(--off-black);
+  box-shadow: var(--shadow-sm);
+}
+
+/* ═══════════════════════════════════════
+   SECTION HEADER
+═══════════════════════════════════════ */
+.section-header {
+  margin-bottom: 3.5rem;
+}
+.section-header.center { text-align: center; }
+.eyebrow {
+  display: inline-block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  margin-bottom: 0.9rem;
+  color: var(--brown-mid);
+}
+.section-header h2 {
+  font-size: clamp(1.8rem, 3.5vw, 2.6rem);
+  font-weight: 700;
+  color: var(--black);
+  margin-bottom: 1rem;
+  line-height: 1.18;
+}
+.section-header p {
+  font-size: 1rem;
+  color: #6b6058;
+  font-weight: 300;
+  line-height: 1.8;
+  max-width: 560px;
+}
+.section-header.center p { margin: 0 auto; }
+
+/* ═══════════════════════════════════════
+   TABS SECTION / TOOLS
+═══════════════════════════════════════ */
+#tools {
+  padding: 6rem 0;
+  background: var(--white);
+}
+.tabs-nav {
+  display: flex;
+  gap: 0.5rem;
+  background: var(--off-white);
+  border: 1px solid var(--cream);
+  border-radius: var(--radius-pill);
+  padding: 0.4rem;
+  margin: 0 auto 3.5rem;
+  width: fit-content;
+  max-width: 100%;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.tab-btn {
+  padding: 0.65rem 1.6rem;
+  border-radius: var(--radius-pill);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  color: #7a6e65;
+  transition: all 0.25s;
+  white-space: nowrap;
+}
+.tab-btn.active-brown {
+  background: var(--brown-dark);
+  color: var(--white);
+  box-shadow: 0 4px 16px rgba(92,61,46,0.3);
+}
+.tab-btn.active-sky {
+  background: var(--sky-dark);
+  color: var(--white);
+  box-shadow: 0 4px 16px rgba(43,95,122,0.3);
+}
+.tab-panel { display: none; }
+.tab-panel.active { display: block; }
+.tool-showcase {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 3rem;
+  align-items: start;
+}
+@media (max-width: 760px) { .tool-showcase { grid-template-columns: 1fr; gap: 2rem; } }
+.tool-info {}
+.tool-badge-row {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1.2rem;
+  flex-wrap: wrap;
+}
+.tool-badge {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 0.28rem 0.7rem;
+  border-radius: var(--radius-pill);
+}
+.tool-info h3 {
+  font-size: 1.9rem;
+  font-weight: 700;
+  margin-bottom: 0.9rem;
+  color: var(--black);
+}
+.tool-info p {
+  font-size: 0.95rem;
+  color: #6b6058;
+  line-height: 1.8;
+  font-weight: 300;
+  margin-bottom: 1.6rem;
+}
+.feature-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  margin-bottom: 2rem;
+}
+.feature-list li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.7rem;
+  font-size: 0.88rem;
+  color: var(--near-black);
+  line-height: 1.6;
+}
+.feature-list .check {
+  width: 20px; height: 20px;
+  border-radius: 50%;
+  display: grid; place-items: center;
+  font-size: 0.65rem;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.check-brown { background: var(--brown-wash); color: var(--brown-dark); }
+.check-sky { background: var(--sky-wash); color: var(--sky-dark); }
+.tool-preview {
+  background: var(--off-white);
+  border: 1px solid var(--cream);
+  border-radius: var(--radius);
+  overflow: hidden;
+  box-shadow: var(--shadow-md);
+}
+.tool-preview-header {
+  padding: 1rem 1.25rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  border-bottom: 1px solid var(--cream);
+}
+.tp-dots { display: flex; gap: 5px; }
+.tp-dot { width: 10px; height: 10px; border-radius: 50%; }
+.tp-d1 { background: #f5a623; } .tp-d2 { background: #7ed321; } .tp-d3 { background: #d0021b; }
+.tp-title { font-size: 0.75rem; font-weight: 600; color: #8a7e75; margin-left: auto; margin-right: auto; }
+.tool-preview-body { padding: 1.4rem; }
+.mock-form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.7rem; margin-bottom: 0.75rem; }
+.mock-input {
+  background: var(--white);
+  border: 1px solid var(--cream);
+  border-radius: 8px;
+  padding: 0.6rem 0.8rem;
+  font-size: 0.78rem;
+  color: #9a8e85;
+}
+.mock-input-label { font-size: 0.64rem; color: #b0a49a; font-weight: 600; text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 0.2rem; }
+.mock-table { width: 100%; border-collapse: collapse; margin-top: 0.8rem; }
+.mock-table thead th {
+  font-size: 0.63rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  padding: 0.4rem 0.5rem;
+  text-align: left;
+  border-bottom: 1px solid var(--cream);
+  color: #8a7e75;
+}
+.mock-table td { font-size: 0.75rem; padding: 0.38rem 0.5rem; color: #5a5248; border-bottom: 1px solid var(--off-white); }
+.mock-total {
+  margin-top: 0.8rem;
+  background: var(--near-black);
+  color: var(--white);
+  padding: 0.7rem 0.9rem;
+  border-radius: 9px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.mock-total span:first-child { font-size: 0.75rem; font-weight: 600; }
+.mock-total span:last-child { font-size: 1rem; font-weight: 700; }
+.mock-total.sky { background: var(--sky-dark); }
+
+/* ═══════════════════════════════════════
+   HOW TO USE
+═══════════════════════════════════════ */
+#how-to-use {
+  padding: 6rem 0;
+  background: var(--off-white);
+}
+.howto-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 3rem;
+  margin-bottom: 3rem;
+}
+@media (max-width: 760px) { .howto-grid { grid-template-columns: 1fr; gap: 2rem; } }
+.howto-tool-section h3 {
+  font-size: 1.2rem;
+  font-weight: 700;
+  margin-bottom: 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+.howto-tool-icon {
+  width: 30px; height: 30px;
+  border-radius: 8px;
+  display: grid; place-items: center;
+  font-size: 0.9rem;
+  flex-shrink: 0;
+}
+.icon-brown { background: var(--brown-wash); }
+.icon-sky { background: var(--sky-wash); }
+.steps { display: flex; flex-direction: column; gap: 1.1rem; }
+.step {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+}
+.step-num {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  display: grid; place-items: center;
+  font-size: 0.78rem;
+  font-weight: 700;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.num-brown { background: var(--brown-wash); color: var(--brown-dark); }
+.num-sky { background: var(--sky-wash); color: var(--sky-dark); }
+.step-content {}
+.step-title { font-size: 0.9rem; font-weight: 600; color: var(--near-black); margin-bottom: 0.2rem; }
+.step-desc { font-size: 0.83rem; color: #7a6e65; line-height: 1.65; }
+.howto-tip {
+  background: var(--white);
+  border-left: 3px solid var(--brown-light);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  padding: 1.1rem 1.4rem;
+  margin-top: 1.5rem;
+  box-shadow: var(--shadow-sm);
+}
+.howto-tip.sky { border-left-color: var(--sky-light); }
+.howto-tip .tip-label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-bottom: 0.4rem;
+  color: var(--brown-mid);
+}
+.howto-tip.sky .tip-label { color: var(--sky-mid); }
+.howto-tip p { font-size: 0.85rem; color: #5a5248; line-height: 1.65; }
+
+/* ═══════════════════════════════════════
+   FOR WHOM
+═══════════════════════════════════════ */
+#for-whom {
+  padding: 6rem 0;
+  background: var(--white);
+}
+.audience-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.25rem;
+  margin-bottom: 3rem;
+}
+@media (max-width: 860px) { .audience-grid { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 520px) { .audience-grid { grid-template-columns: 1fr; } }
+.audience-card {
+  background: var(--off-white);
+  border: 1px solid var(--cream);
+  border-radius: var(--radius);
+  padding: 1.75rem 1.5rem;
+  transition: transform 0.25s, box-shadow 0.25s;
+}
+.audience-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-md); }
+.audience-icon {
+  font-size: 1.8rem;
+  margin-bottom: 1rem;
+  display: block;
+}
+.audience-card h3 {
+  font-size: 1.05rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+  color: var(--black);
+}
+.audience-card p { font-size: 0.85rem; color: #6b6058; line-height: 1.7; font-weight: 300; }
+.audience-tag {
+  display: inline-block;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-top: 0.9rem;
+  padding: 0.22rem 0.65rem;
+  border-radius: var(--radius-pill);
+}
+.not-for-box {
+  background: var(--off-white);
+  border: 1.5px solid var(--cream);
+  border-radius: var(--radius);
+  padding: 2rem 2.4rem;
+  display: flex;
+  gap: 2rem;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+.not-for-box .nfb-icon { font-size: 2rem; flex-shrink: 0; }
+.not-for-box h4 { font-size: 1rem; font-weight: 700; margin-bottom: 0.4rem; color: var(--near-black); }
+.not-for-box p { font-size: 0.85rem; color: #7a6e65; line-height: 1.7; }
+
+/* ═══════════════════════════════════════
+   FEATURES / CAPABILITIES
+═══════════════════════════════════════ */
+#features {
+  padding: 6rem 0;
+  background: var(--near-black);
+  color: var(--off-white);
+}
+#features .eyebrow { color: var(--brown-pale); }
+#features h2 { color: var(--white); }
+#features .section-header p { color: #a89e95; }
+.features-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.25rem;
+}
+@media (max-width: 860px) { .features-grid { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 520px) { .features-grid { grid-template-columns: 1fr; } }
+.feature-card {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: var(--radius);
+  padding: 1.75rem 1.5rem;
+  transition: background 0.25s, border-color 0.25s;
+}
+.feature-card:hover {
+  background: rgba(255,255,255,0.07);
+  border-color: rgba(255,255,255,0.14);
+}
+.fc-icon {
+  width: 44px; height: 44px;
+  border-radius: 12px;
+  display: grid; place-items: center;
+  font-size: 1.2rem;
+  margin-bottom: 1.1rem;
+}
+.fc-icon-brown { background: rgba(184,136,106,0.18); }
+.fc-icon-sky { background: rgba(106,173,204,0.18); }
+.feature-card h3 { font-size: 0.98rem; font-weight: 700; color: var(--white); margin-bottom: 0.5rem; }
+.feature-card p { font-size: 0.83rem; color: #9a8e85; line-height: 1.7; font-weight: 300; }
+
+/* ═══════════════════════════════════════
+   COMPARISON
+═══════════════════════════════════════ */
+#about {
+  padding: 6rem 0;
+  background: var(--white);
+}
+.compare-table-wrap { overflow-x: auto; }
+.compare-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+}
+.compare-table th {
+  padding: 1.1rem 1.5rem;
+  text-align: left;
+  border-bottom: 2px solid var(--cream);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #8a7e75;
+}
+.compare-table th.col-tool1 { color: var(--brown-dark); }
+.compare-table th.col-tool2 { color: var(--sky-dark); }
+.compare-table td {
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid var(--off-white);
+  color: #5a5248;
+  vertical-align: top;
+  line-height: 1.65;
+}
+.compare-table td:first-child { font-weight: 600; color: var(--near-black); }
+.compare-table tr:last-child td { border-bottom: none; }
+.compare-table tr:nth-child(even) td { background: var(--off-white); }
+.check-icon { color: var(--brown-mid); font-weight: 700; }
+.check-icon-sky { color: var(--sky-mid); font-weight: 700; }
+.about-story {
+  margin-top: 4rem;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4rem;
+  align-items: center;
+}
+@media (max-width: 760px) { .about-story { grid-template-columns: 1fr; gap: 2rem; } }
+.about-text h3 { font-size: 1.5rem; font-weight: 700; margin-bottom: 1rem; color: var(--black); }
+.about-text p { font-size: 0.92rem; color: #6b6058; line-height: 1.85; font-weight: 300; margin-bottom: 1rem; }
+.about-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+.about-stat-card {
+  background: var(--off-white);
+  border: 1px solid var(--cream);
+  border-radius: var(--radius);
+  padding: 1.5rem 1.25rem;
+  text-align: center;
+  transition: transform 0.2s;
+}
+.about-stat-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-sm); }
+.asc-num {
+  font-family: 'Playfair Display', serif;
+  font-size: 2rem;
+  font-weight: 700;
+  display: block;
+  margin-bottom: 0.3rem;
+}
+.asc-num.brown { color: var(--brown-dark); }
+.asc-num.sky { color: var(--sky-dark); }
+.about-stat-card p { font-size: 0.8rem; color: #8a7e75; font-weight: 400; }
+
+/* ═══════════════════════════════════════
+   FAQ
+═══════════════════════════════════════ */
+#faq {
+  padding: 6rem 0;
+  background: var(--off-white);
+}
+.faq-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+@media (max-width: 760px) { .faq-grid { grid-template-columns: 1fr; } }
+.faq-item {
+  background: var(--white);
+  border: 1px solid var(--cream);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+.faq-q {
+  width: 100%;
+  padding: 1.2rem 1.4rem;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--near-black);
+  transition: background 0.2s;
+  line-height: 1.5;
+}
+.faq-q:hover { background: var(--off-white); }
+.faq-icon {
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  background: var(--cream);
+  display: grid; place-items: center;
+  font-size: 0.9rem;
+  flex-shrink: 0;
+  transition: transform 0.2s, background 0.2s;
+  margin-top: 1px;
+}
+.faq-item.open .faq-icon { transform: rotate(45deg); background: var(--brown-wash); color: var(--brown-dark); }
+.faq-a {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.35s ease, padding 0.2s;
+  padding: 0 1.4rem;
+}
+.faq-a p {
+  font-size: 0.85rem;
+  color: #6b6058;
+  line-height: 1.8;
+  font-weight: 300;
+  padding-bottom: 1.2rem;
+}
+.faq-item.open .faq-a { max-height: 400px; }
+
+/* ═══════════════════════════════════════
+   CTA SECTION
+═══════════════════════════════════════ */
+.cta-section {
+  padding: 5rem 0;
+  background: var(--grad-subtle);
+  text-align: center;
+  overflow: hidden;
+  position: relative;
+}
+.cta-section::before {
+  content: '⚡';
+  position: absolute;
+  font-size: 300px;
+  opacity: 0.03;
+  top: 50%; left: 50%;
+  transform: translate(-50%,-50%);
+  pointer-events: none;
+}
+.cta-section .eyebrow { color: var(--brown-mid); }
+.cta-section h2 { font-size: clamp(1.8rem, 3.5vw, 2.8rem); color: var(--black); margin-bottom: 1rem; }
+.cta-section p {
+  font-size: 1rem;
+  color: #6b6058;
+  font-weight: 300;
+  max-width: 520px;
+  margin: 0 auto 2.5rem;
+  line-height: 1.8;
+}
+.cta-tools {
+  display: flex;
+  gap: 1.25rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+.cta-tool-card {
+  background: var(--white);
+  border: 1px solid var(--cream);
+  border-radius: var(--radius);
+  padding: 2rem 2.2rem;
+  width: 280px;
+  box-shadow: var(--shadow-md);
+  transition: transform 0.25s, box-shadow 0.25s;
+  text-align: left;
+}
+.cta-tool-card:hover { transform: translateY(-6px); box-shadow: var(--shadow-lg); }
+.cta-tool-icon {
+  font-size: 2rem;
+  margin-bottom: 0.85rem;
+  display: block;
+}
+.cta-tool-card h3 { font-size: 1rem; font-weight: 700; margin-bottom: 0.4rem; color: var(--black); }
+.cta-tool-card p { font-size: 0.82rem; color: #7a6e65; line-height: 1.65; margin-bottom: 1.2rem; }
+
+/* ═══════════════════════════════════════
+   FOOTER
+═══════════════════════════════════════ */
+footer {
+  background: var(--off-black);
+  color: #a89e95;
+}
+.footer-main {
+  padding: 4rem 0 3rem;
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 1fr 1fr;
+  gap: 3rem;
+}
+@media (max-width: 860px) { .footer-main { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 520px) { .footer-main { grid-template-columns: 1fr; gap: 2rem; } }
+.footer-brand {}
+.footer-logo {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 1rem;
+}
+.footer-logo-mark {
+  width: 32px; height: 32px;
+  background: var(--grad-mix);
+  border-radius: 8px;
+  display: grid; place-items: center;
+  font-size: 0.95rem;
+}
+.footer-logo-text {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--off-white);
+}
+.footer-brand p {
+  font-size: 0.82rem;
+  line-height: 1.75;
+  color: #7a7068;
+  font-weight: 300;
+  margin-bottom: 1.25rem;
+}
+.footer-disclaimer {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: var(--radius-sm);
+  padding: 0.75rem 1rem;
+  font-size: 0.75rem;
+  color: #6a6058;
+  line-height: 1.65;
+}
+.footer-col h4 {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--off-white);
+  margin-bottom: 1.1rem;
+}
+.footer-col ul { list-style: none; display: flex; flex-direction: column; gap: 0.6rem; }
+.footer-col ul li a {
+  font-size: 0.85rem;
+  color: #7a7068;
+  transition: color 0.2s;
+  font-weight: 300;
+}
+.footer-col ul li a:hover { color: var(--brown-pale); }
+.footer-info-box {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: var(--radius-sm);
+  padding: 1rem 1.1rem;
+  font-size: 0.78rem;
+  color: #6a6058;
+  line-height: 1.7;
+  margin-top: 0.5rem;
+}
+.footer-info-box strong { color: #9a9088; font-weight: 600; display: block; margin-bottom: 0.3rem; }
+.footer-bottom {
+  border-top: 1px solid rgba(255,255,255,0.06);
+  padding: 1.5rem 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+.footer-bottom p { font-size: 0.78rem; color: #5a5450; }
+.footer-bottom-links {
+  display: flex;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+.footer-bottom-links a {
+  font-size: 0.78rem;
+  color: #5a5450;
+  transition: color 0.2s;
+}
+.footer-bottom-links a:hover { color: var(--brown-pale); }
+
+/* ═══════════════════════════════════════
+   MODAL (Terms/Privacy)
+═══════════════════════════════════════ */
+.modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(14,14,14,0.7);
+  backdrop-filter: blur(6px);
+  z-index: 1000;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+}
+.modal-overlay.open { display: flex; }
+.modal {
+  background: var(--white);
+  border-radius: var(--radius);
+  max-width: 680px;
+  width: 100%;
+  max-height: 80vh;
+  overflow-y: auto;
+  box-shadow: 0 30px 100px rgba(0,0,0,0.4);
+}
+.modal-header {
+  padding: 1.5rem 2rem 1.2rem;
+  border-bottom: 1px solid var(--cream);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  background: var(--white);
+  z-index: 1;
+}
+.modal-header h3 { font-size: 1.3rem; font-weight: 700; color: var(--black); }
+.modal-close {
+  width: 34px; height: 34px;
+  border-radius: 50%;
+  border: 1.5px solid var(--cream);
+  background: none;
+  cursor: pointer;
+  font-size: 1.1rem;
+  color: #8a7e75;
+  display: grid; place-items: center;
+  transition: all 0.2s;
+}
+.modal-close:hover { background: var(--off-white); color: var(--near-black); }
+.modal-body { padding: 1.8rem 2rem 2.2rem; }
+.modal-body h4 { font-size: 0.95rem; font-weight: 700; color: var(--near-black); margin: 1.3rem 0 0.5rem; }
+.modal-body h4:first-child { margin-top: 0; }
+.modal-body p { font-size: 0.88rem; color: #6b6058; line-height: 1.8; font-weight: 300; }
+.modal-body ul { margin: 0.5rem 0; padding-left: 1.4rem; }
+.modal-body ul li { font-size: 0.88rem; color: #6b6058; line-height: 1.8; margin-bottom: 0.3rem; font-weight: 300; }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════ NAV ═══════════════════════════ -->
+<nav class="nav" id="mainNav">
+  <div class="nav-inner">
+    <div class="nav-logo">
+      <div class="nav-logo-mark">⚡</div>
+      <span class="nav-logo-text">ElectroCalc</span>
+    </div>
+    <ul class="nav-links" id="navLinks">
+      <li><a href="#tools">Tools</a></li>
+      <li><a href="#how-to-use">How to Use</a></li>
+      <li><a href="#for-whom">For Whom</a></li>
+      <li><a href="#about">About</a></li>
+      <li><a href="#faq">FAQ</a></li>
+    </ul>
+    <div class="nav-cta" id="navCta">
+      <a href="electricity_bill_generator.html" class="btn btn-ghost">Meter-Based Tool</a>
+      <a href="appliance_bill_generator.html" class="btn btn-brown">Appliance Tool</a>
+    </div>
+    <button class="nav-mobile-toggle" id="mobileToggle" onclick="toggleMobileNav()" aria-label="Toggle Menu">☰</button>
+  </div>
+</nav>
+
+<!-- ═══════════════════════════ HERO ═══════════════════════════ -->
+<section class="hero">
+  <div class="container">
+    <div class="hero-inner">
+      <div class="hero-content">
+        <div class="hero-eyebrow">
+          <span>Free</span>
+          Two powerful tools — zero backend
+        </div>
+        <h1>Estimate Your<br><em>Electricity Bill</em><br>Instantly</h1>
+        <p class="hero-desc">Two purpose-built calculators for households, businesses, and professionals. Enter meter readings or appliance wattage — and get a beautifully formatted bill preview ready to download.</p>
+        <div class="hero-actions">
+          <a href="electricity_bill_generator.html" class="btn btn-brown btn-lg">⚡ Meter-Based Tool</a>
+          <a href="appliance_bill_generator.html" class="btn btn-sky btn-lg">🔌 Appliance Tool</a>
+        </div>
+        <div class="hero-trust">
+          <p>No data stored. No login required.</p>
+          <div class="trust-badges">
+            <span class="trust-badge">100% Free</span>
+            <span class="trust-badge">Frontend Only</span>
+            <span class="trust-badge">15 Currencies</span>
+          </div>
+        </div>
+      </div>
+      <div class="hero-visual">
+        <div class="hero-card card-brown">
+          <span class="card-tag tag-brown">Tool 1 — Meter-Based</span>
+          <h3>Electricity Bill Generator</h3>
+          <p>Enter previous & current meter readings with per-unit charges to generate a complete bill preview.</p>
+          <div class="hero-stat-row">
+            <div class="hero-stat"><span class="hero-stat-num">kWh</span><span class="hero-stat-label">Unit Based</span></div>
+            <div class="hero-stat"><span class="hero-stat-num">PDF</span><span class="hero-stat-label">Download</span></div>
+            <div class="hero-stat"><span class="hero-stat-num">XLS</span><span class="hero-stat-label">Export</span></div>
+          </div>
+        </div>
+        <div class="hero-card card-sky">
+          <span class="card-tag tag-sky">Tool 2 — Appliance-Based</span>
+          <h3>Appliance Bill Estimator</h3>
+          <p>Add individual appliances with wattage and usage hours. Get per-appliance energy breakdown and total cost.</p>
+          <div class="hero-stat-row">
+            <div class="hero-stat"><span class="hero-stat-num">Watt</span><span class="hero-stat-label">Per Device</span></div>
+            <div class="hero-stat"><span class="hero-stat-num">Live</span><span class="hero-stat-label">Preview</span></div>
+            <div class="hero-stat"><span class="hero-stat-num">15</span><span class="hero-stat-label">Currencies</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════ TOOLS / TABS ═══════════════════════════ -->
+<section id="tools">
+  <div class="container">
+    <div class="section-header center">
+      <span class="eyebrow">Our Tools</span>
+      <h2>Two Tools, One Purpose</h2>
+      <p>Choose the calculator that matches how you want to estimate your electricity cost — by meter reading or by individual appliance.</p>
+    </div>
+    <div class="tabs-nav">
+      <button class="tab-btn active-brown" onclick="switchTab('tool1', this, 'active-brown')">⚡ Meter-Based Calculator</button>
+      <button class="tab-btn" onclick="switchTab('tool2', this, 'active-sky')">🔌 Appliance-Based Calculator</button>
+    </div>
+
+    <div id="tool1" class="tab-panel active">
+      <div class="tool-showcase">
+        <div class="tool-info">
+          <div class="tool-badge-row">
+            <span class="tool-badge tag-brown">Tool 1</span>
+            <span class="tool-badge" style="background:var(--off-white);color:#7a6e65;">Meter Reading</span>
+          </div>
+          <h3>Electricity Bill Generator</h3>
+          <p>The classic approach — enter your previous and current meter readings, set your per-unit rate, and get a complete bill preview in seconds. Ideal for consumers who receive monthly readings from their utility provider.</p>
+          <ul class="feature-list">
+            <li><span class="check check-brown">✓</span>Enter previous and current kWh meter readings</li>
+            <li><span class="check check-brown">✓</span>Auto-calculates units consumed and energy charge</li>
+            <li><span class="check check-brown">✓</span>Fixed charges, other charges, and tax/duty support</li>
+            <li><span class="check check-brown">✓</span>Consumer details: name, meter number, location</li>
+            <li><span class="check check-brown">✓</span>Live bill preview with professional layout</li>
+            <li><span class="check check-brown">✓</span>Download as PDF (A4) or Excel spreadsheet</li>
+            <li><span class="check check-brown">✓</span>15 international currencies with auto symbols</li>
+            <li><span class="check check-brown">✓</span>Inline validation — prevents invalid inputs</li>
+          </ul>
+          <a href="electricity_bill_generator.html" class="btn btn-brown btn-lg">Open Meter-Based Tool →</a>
+        </div>
+        <div class="tool-preview">
+          <div class="tool-preview-header">
+            <div class="tp-dots"><div class="tp-dot tp-d3"></div><div class="tp-dot tp-d1"></div><div class="tp-dot tp-d2"></div></div>
+            <span class="tp-title">Electricity Bill Generator</span>
+          </div>
+          <div class="tool-preview-body">
+            <div class="mock-form-row">
+              <div><div class="mock-input-label">Consumer Name</div><div class="mock-input">Rajesh Kumar</div></div>
+              <div><div class="mock-input-label">Meter Number</div><div class="mock-input">MTR-007423</div></div>
+            </div>
+            <div class="mock-form-row">
+              <div><div class="mock-input-label">Previous Reading</div><div class="mock-input">4,820 kWh</div></div>
+              <div><div class="mock-input-label">Current Reading</div><div class="mock-input">5,240 kWh</div></div>
+            </div>
+            <div class="mock-form-row">
+              <div><div class="mock-input-label">Per Unit Charge</div><div class="mock-input">₹ 6.50 / kWh</div></div>
+              <div><div class="mock-input-label">Tax Rate</div><div class="mock-input">9%</div></div>
+            </div>
+            <table class="mock-table">
+              <thead><tr><th>Description</th><th>Amount</th></tr></thead>
+              <tbody>
+                <tr><td>Energy Charge (420 kWh)</td><td>₹ 2,730.00</td></tr>
+                <tr><td>Fixed Charge</td><td>₹ 120.00</td></tr>
+                <tr><td>Tax (9%)</td><td>₹ 256.50</td></tr>
+              </tbody>
+            </table>
+            <div class="mock-total"><span>TOTAL PAYABLE</span><span>₹ 3,106.50</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="tool2" class="tab-panel">
+      <div class="tool-showcase">
+        <div class="tool-info">
+          <div class="tool-badge-row">
+            <span class="tool-badge tag-sky">Tool 2</span>
+            <span class="tool-badge" style="background:var(--sky-wash);color:var(--sky-dark);">Appliance Wattage</span>
+          </div>
+          <h3>Appliance-Based Bill Estimator</h3>
+          <p>Don't have your meter readings? No problem. Add each of your appliances individually — enter wattage, quantity, daily usage hours, and days used. The tool calculates energy consumed per appliance and rolls it into a detailed bill.</p>
+          <ul class="feature-list">
+            <li><span class="check check-sky">✓</span>Add unlimited appliances (AC, fans, lights, etc.)</li>
+            <li><span class="check check-sky">✓</span>Per-appliance energy breakdown in kWh</li>
+            <li><span class="check check-sky">✓</span>Quantity, wattage, hours/day, and days used</li>
+            <li><span class="check check-sky">✓</span>Live recalculation on every keystroke</li>
+            <li><span class="check check-sky">✓</span>Full charges table: energy + fixed + tax</li>
+            <li><span class="check check-sky">✓</span>Download as PDF with appliance usage table</li>
+            <li><span class="check check-sky">✓</span>Excel export with intermediate calculations</li>
+            <li><span class="check check-sky">✓</span>Pre-loaded sample appliances for quick start</li>
+          </ul>
+          <a href="appliance_bill_generator.html" class="btn btn-sky btn-lg">Open Appliance Tool →</a>
+        </div>
+        <div class="tool-preview">
+          <div class="tool-preview-header">
+            <div class="tp-dots"><div class="tp-dot tp-d3"></div><div class="tp-dot tp-d1"></div><div class="tp-dot tp-d2"></div></div>
+            <span class="tp-title">Appliance Bill Estimator</span>
+          </div>
+          <div class="tool-preview-body">
+            <div class="mock-form-row">
+              <div><div class="mock-input-label">Consumer Name</div><div class="mock-input">Sarah Johnson</div></div>
+              <div><div class="mock-input-label">Per Unit Cost</div><div class="mock-input">$ 0.13 / kWh</div></div>
+            </div>
+            <table class="mock-table">
+              <thead><tr><th>Appliance</th><th>Watts</th><th>Hrs</th><th>Days</th><th>kWh</th></tr></thead>
+              <tbody>
+                <tr><td>Air Conditioner</td><td>1500W</td><td>8h</td><td>30</td><td>360 kWh</td></tr>
+                <tr><td>Refrigerator</td><td>150W</td><td>24h</td><td>30</td><td>108 kWh</td></tr>
+                <tr><td>LED Bulbs ×6</td><td>10W</td><td>6h</td><td>30</td><td>10.8 kWh</td></tr>
+              </tbody>
+            </table>
+            <div style="text-align:right;font-size:0.75rem;color:#8a7e75;margin:0.5rem 0;">Total: 478.8 kWh</div>
+            <div class="mock-total sky"><span>TOTAL PAYABLE</span><span>$ 67.24</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════ HOW TO USE ═══════════════════════════ -->
+<section id="how-to-use">
+  <div class="container">
+    <div class="section-header center">
+      <span class="eyebrow">Step by Step</span>
+      <h2>How to Use Each Tool</h2>
+      <p>Both tools are designed for zero learning curve. Follow these simple steps and have your bill estimate ready in under two minutes.</p>
+    </div>
+    <div class="howto-grid">
+      <div class="howto-tool-section">
+        <h3><div class="howto-tool-icon icon-brown">⚡</div> Meter-Based Calculator</h3>
+        <div class="steps">
+          <div class="step">
+            <div class="step-num num-brown">1</div>
+            <div class="step-content">
+              <div class="step-title">Enter Consumer Details</div>
+              <div class="step-desc">Fill in consumer name, meter number, area/location, and select billing month. Bill number and date are auto-generated.</div>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num num-brown">2</div>
+            <div class="step-content">
+              <div class="step-title">Input Meter Readings</div>
+              <div class="step-desc">Enter your previous reading and current reading in kWh. Units consumed is calculated automatically.</div>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num num-brown">3</div>
+            <div class="step-content">
+              <div class="step-title">Set Charges & Currency</div>
+              <div class="step-desc">Add per-unit rate, fixed charge, optional other charges, and tax percentage. Select your local currency.</div>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num num-brown">4</div>
+            <div class="step-content">
+              <div class="step-title">Preview, Download or Print</div>
+              <div class="step-desc">The bill preview updates live. Download your bill as a PDF or Excel file, or use the print button.</div>
+            </div>
+          </div>
+        </div>
+        <div class="howto-tip">
+          <div class="tip-label">💡 Pro Tip</div>
+          <p>Check your electricity bill or utility meter card for the exact previous and current readings. The per-unit rate is usually printed on your monthly statement.</p>
+        </div>
+      </div>
+
+      <div class="howto-tool-section">
+        <h3><div class="howto-tool-icon icon-sky">🔌</div> Appliance-Based Estimator</h3>
+        <div class="steps">
+          <div class="step">
+            <div class="step-num num-sky">1</div>
+            <div class="step-content">
+              <div class="step-title">Enter Consumer & Rate Details</div>
+              <div class="step-desc">Fill in your name, location, and billing month. Set the per-unit rate, fixed charge, and currency.</div>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num num-sky">2</div>
+            <div class="step-content">
+              <div class="step-title">Add Your Appliances</div>
+              <div class="step-desc">Click "Add Appliance" to add each device. Enter the appliance name, wattage (from the device label), quantity, daily hours of use, and number of days used.</div>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num num-sky">3</div>
+            <div class="step-content">
+              <div class="step-title">Review Energy Breakdown</div>
+              <div class="step-desc">See per-appliance kWh calculation update live. The total units bar shows combined consumption.</div>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num num-sky">4</div>
+            <div class="step-content">
+              <div class="step-title">Download Your Bill</div>
+              <div class="step-desc">Download a PDF with the full appliance table and charges breakdown, or export to Excel for further analysis.</div>
+            </div>
+          </div>
+        </div>
+        <div class="howto-tip sky">
+          <div class="tip-label">💡 Pro Tip</div>
+          <p>You can find the wattage of any appliance on its back label, user manual, or product page. Start with the three pre-loaded sample appliances to see how it works.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════ FOR WHOM ═══════════════════════════ -->
+<section id="for-whom">
+  <div class="container">
+    <div class="section-header center">
+      <span class="eyebrow">Audience</span>
+      <h2>Who Is This Built For?</h2>
+      <p>ElectroCalc serves anyone who needs a quick, professional electricity cost estimate — without official billing complexity.</p>
+    </div>
+    <div class="audience-grid">
+      <div class="audience-card">
+        <span class="audience-icon">🏠</span>
+        <h3>Homeowners & Tenants</h3>
+        <p>Estimate monthly bills before they arrive. Understand which appliances are costing the most and plan your energy usage wisely.</p>
+        <span class="audience-tag tag-brown">Best with: Both Tools</span>
+      </div>
+      <div class="audience-card">
+        <span class="audience-icon">🏢</span>
+        <h3>Small Business Owners</h3>
+        <p>Calculate electricity costs for your shop, office, or workshop. Break down consumption by equipment and manage overheads better.</p>
+        <span class="audience-tag tag-sky">Best with: Appliance Tool</span>
+      </div>
+      <div class="audience-card">
+        <span class="audience-icon">📊</span>
+        <h3>Accountants & Billing Staff</h3>
+        <p>Generate a clear, professional bill preview for client records or internal reporting. Download as PDF or Excel for easy filing.</p>
+        <span class="audience-tag tag-brown">Best with: Meter Tool</span>
+      </div>
+      <div class="audience-card">
+        <span class="audience-icon">🎓</span>
+        <h3>Students & Educators</h3>
+        <p>Understand electricity billing mechanics practically. A great hands-on tool for physics, economics, or engineering coursework.</p>
+        <span class="audience-tag tag-sky">Best with: Both Tools</span>
+      </div>
+      <div class="audience-card">
+        <span class="audience-icon">🏗️</span>
+        <h3>Property Managers</h3>
+        <p>Estimate utility costs across multiple units. Use as a quick reference for tenancy cost calculations and rental pricing.</p>
+        <span class="audience-tag tag-brown">Best with: Meter Tool</span>
+      </div>
+      <div class="audience-card">
+        <span class="audience-icon">⚡</span>
+        <h3>Energy Consultants</h3>
+        <p>Demonstrate to clients how appliance load affects the monthly bill. Produce branded-looking estimate documents on the fly.</p>
+        <span class="audience-tag tag-sky">Best with: Appliance Tool</span>
+      </div>
+    </div>
+    <div class="not-for-box">
+      <div class="nfb-icon">⚠️</div>
+      <div>
+        <h4>Who This Is NOT For</h4>
+        <p>These tools are estimation and preview tools only. They are <strong>not</strong> intended to replace official billing systems issued by registered electricity utilities, government bodies, or licensed billing providers. The bills generated carry an explicit disclaimer and should not be used for legal, commercial, or regulatory purposes. Do not use for official tenant invoicing without appropriate professional advice.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════ FEATURES ═══════════════════════════ -->
+<section id="features">
+  <div class="container">
+    <div class="section-header center">
+      <span class="eyebrow">Capabilities</span>
+      <h2 style="color:var(--white)">Everything Built In</h2>
+      <p>No plugins. No extensions. No subscriptions. Every feature ships inside a single HTML file.</p>
+    </div>
+    <div class="features-grid">
+      <div class="feature-card">
+        <div class="fc-icon fc-icon-brown">🔄</div>
+        <h3>Live Recalculation</h3>
+        <p>Every number updates instantly as you type. No submit buttons, no page reloads. The bill preview reflects your inputs in real time.</p>
+      </div>
+      <div class="feature-card">
+        <div class="fc-icon fc-icon-sky">🌍</div>
+        <h3>15 Currencies</h3>
+        <p>From INR to USD, EUR, GBP, AED, PKR, and more. Currency symbols appear automatically across the preview, PDF, and Excel export.</p>
+      </div>
+      <div class="feature-card">
+        <div class="fc-icon fc-icon-brown">📄</div>
+        <h3>Professional PDF Export</h3>
+        <p>A4-formatted PDF with proper margins, gradient header, structured tables, and a disclaimer footer. Looks like an actual bill.</p>
+      </div>
+      <div class="feature-card">
+        <div class="fc-icon fc-icon-sky">📊</div>
+        <h3>Excel Export</h3>
+        <p>Structured spreadsheet with all consumer details, readings/appliance data, intermediate calculations, and final totals.</p>
+      </div>
+      <div class="feature-card">
+        <div class="fc-icon fc-icon-brown">✅</div>
+        <h3>Inline Validation</h3>
+        <p>Red error borders appear on invalid fields instantly. Current reading can't be less than previous. Usage hours can't exceed 24.</p>
+      </div>
+      <div class="feature-card">
+        <div class="fc-icon fc-icon-sky">🔒</div>
+        <h3>Zero Data Stored</h3>
+        <p>Fully frontend — no server, no database, no cookies, no analytics tracking your inputs. Everything stays in your browser.</p>
+      </div>
+      <div class="feature-card">
+        <div class="fc-icon fc-icon-brown">📱</div>
+        <h3>Mobile Responsive</h3>
+        <p>Works on phones, tablets, and desktops. Layouts adapt fluidly across all screen sizes without breaking functionality.</p>
+      </div>
+      <div class="feature-card">
+        <div class="fc-icon fc-icon-sky">🖨️</div>
+        <h3>Print Support</h3>
+        <p>Use the Print button to send directly to your printer or save as PDF via your system's print dialog. Form is auto-hidden.</p>
+      </div>
+      <div class="feature-card">
+        <div class="fc-icon fc-icon-brown">⚡</div>
+        <h3>Auto-Generated Fields</h3>
+        <p>Bill number (unique random ID) and generation date are auto-filled. Billing month defaults to the current month automatically.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════ ABOUT / COMPARE ═══════════════════════════ -->
+<section id="about">
+  <div class="container">
+    <div class="section-header center">
+      <span class="eyebrow">Side by Side</span>
+      <h2>Compare the Two Tools</h2>
+      <p>Not sure which calculator to use? This table will help you choose the right one for your situation.</p>
+    </div>
+    <div class="compare-table-wrap">
+      <table class="compare-table">
+        <thead>
+          <tr>
+            <th>Feature / Criteria</th>
+            <th class="col-tool1">⚡ Meter-Based Tool</th>
+            <th class="col-tool2">🔌 Appliance Tool</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Input Method</td>
+            <td>Previous & current meter readings (kWh)</td>
+            <td>Per-appliance wattage, hours, and days</td>
+          </tr>
+          <tr>
+            <td>Best For</td>
+            <td>Monthly billing estimation from meter data</td>
+            <td>Estimating before bills arrive; energy audits</td>
+          </tr>
+          <tr>
+            <td>Appliance Breakdown</td>
+            <td>Not included — total units only</td>
+            <td><span class="check-icon-sky">✓</span> Per-appliance kWh table</td>
+          </tr>
+          <tr>
+            <td>Meter Number Field</td>
+            <td><span class="check-icon">✓</span> Included in bill</td>
+            <td>Not applicable</td>
+          </tr>
+          <tr>
+            <td>Currency Support</td>
+            <td><span class="check-icon">✓</span> 15 currencies</td>
+            <td><span class="check-icon-sky">✓</span> 15 currencies</td>
+          </tr>
+          <tr>
+            <td>Fixed & Other Charges</td>
+            <td><span class="check-icon">✓</span> Yes</td>
+            <td><span class="check-icon-sky">✓</span> Yes</td>
+          </tr>
+          <tr>
+            <td>Tax / Duty (%)</td>
+            <td><span class="check-icon">✓</span> Yes</td>
+            <td><span class="check-icon-sky">✓</span> Yes</td>
+          </tr>
+          <tr>
+            <td>PDF Download (A4)</td>
+            <td><span class="check-icon">✓</span> Yes</td>
+            <td><span class="check-icon-sky">✓</span> Yes, with appliance table</td>
+          </tr>
+          <tr>
+            <td>Excel Export</td>
+            <td><span class="check-icon">✓</span> Yes</td>
+            <td><span class="check-icon-sky">✓</span> Yes, with intermediate calcs</td>
+          </tr>
+          <tr>
+            <td>Live Bill Preview</td>
+            <td><span class="check-icon">✓</span> Yes</td>
+            <td><span class="check-icon-sky">✓</span> Yes</td>
+          </tr>
+          <tr>
+            <td>Requires Meter Reading?</td>
+            <td>Yes — required</td>
+            <td>No — not needed</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="about-story">
+      <div class="about-text">
+        <h3>Why We Built ElectroCalc</h3>
+        <p>Electricity billing is surprisingly confusing for most people. Between unit calculations, tax layers, and fixed charges, even a simple monthly bill can be hard to verify or estimate in advance.</p>
+        <p>We built ElectroCalc as a clean, no-nonsense pair of tools that anyone can use — whether you're checking your utility bill for accuracy, planning a budget, or teaching someone how electricity billing works.</p>
+        <p>Everything runs locally in your browser. No accounts. No subscriptions. No data ever sent anywhere. Just open the file and use it.</p>
+      </div>
+      <div class="about-stats">
+        <div class="about-stat-card">
+          <span class="asc-num brown">2</span>
+          <p>Specialized calculation tools in one package</p>
+        </div>
+        <div class="about-stat-card">
+          <span class="asc-num sky">15</span>
+          <p>Currencies supported with correct symbols</p>
+        </div>
+        <div class="about-stat-card">
+          <span class="asc-num brown">0</span>
+          <p>Bytes of user data stored or transmitted</p>
+        </div>
+        <div class="about-stat-card">
+          <span class="asc-num sky">3</span>
+          <p>Export formats: PDF, Excel, and Print</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════ FAQ ═══════════════════════════ -->
+<section id="faq">
+  <div class="container">
+    <div class="section-header center">
+      <span class="eyebrow">FAQ</span>
+      <h2>Frequently Asked Questions</h2>
+      <p>Everything you might want to know about these tools, how they work, and when to use them.</p>
+    </div>
+    <div class="faq-grid">
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggleFaq(this)">
+          Is this an official electricity billing tool?
+          <span class="faq-icon">+</span>
+        </button>
+        <div class="faq-a"><p>No. These are estimation and preview tools only. All generated bills carry an explicit disclaimer: "This is a system-generated electricity bill preview for estimation purposes only." They should not be used as official utility bills or for any legal or regulatory purpose.</p></div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggleFaq(this)">
+          Does this tool store or transmit my data?
+          <span class="faq-icon">+</span>
+        </button>
+        <div class="faq-a"><p>No. Both tools are 100% frontend — they run entirely in your browser with no backend server. Nothing you type is ever sent anywhere or stored. When you close the tab, all data is gone unless you've downloaded the PDF or Excel file.</p></div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggleFaq(this)">
+          Which tool should I use — meter-based or appliance-based?
+          <span class="faq-icon">+</span>
+        </button>
+        <div class="faq-a"><p>Use the Meter-Based tool if you have your electricity meter readings (the numbers shown on your meter or utility bill). Use the Appliance-Based tool if you want to estimate your bill by listing your devices individually — useful for planning, audits, or if you don't have meter data yet.</p></div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggleFaq(this)">
+          How accurate are the estimates?
+          <span class="faq-icon">+</span>
+        </button>
+        <div class="faq-a"><p>The calculations are mathematically precise given your inputs. The accuracy of the estimate depends entirely on how accurate your inputs are — especially the per-unit rate, which varies by location and provider. Always cross-reference with your actual utility bill for real-world accuracy.</p></div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggleFaq(this)">
+          Can I use this on my phone or tablet?
+          <span class="faq-icon">+</span>
+        </button>
+        <div class="faq-a"><p>Yes. Both tools are fully responsive and work on mobile browsers, tablets, and desktops. The appliance table scrolls horizontally on small screens for a comfortable experience. PDF and Excel downloads also work on most modern mobile browsers.</p></div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggleFaq(this)">
+          Where do I find the per-unit electricity rate?
+          <span class="faq-icon">+</span>
+        </button>
+        <div class="faq-a"><p>Your per-unit rate is printed on your monthly electricity bill from your utility provider. It's usually labeled as "Energy Charge per kWh" or similar. In India it typically ranges from ₹4–9/kWh; in the US around $0.12–0.17/kWh; in the UK around £0.25–0.30/kWh — but these vary significantly by region and provider.</p></div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggleFaq(this)">
+          How do I find the wattage of my appliances?
+          <span class="faq-icon">+</span>
+        </button>
+        <div class="faq-a"><p>The wattage is usually printed on a label on the back or bottom of the appliance. It's also in the user manual or product specification page. Common examples: AC unit = 1000–2000W, refrigerator = 100–200W, LED bulb = 7–15W, washing machine = 500–1000W, TV = 50–200W.</p></div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggleFaq(this)">
+          Can I add multiple appliances of the same type?
+          <span class="faq-icon">+</span>
+        </button>
+        <div class="faq-a"><p>Yes. Each row has a "Quantity" field — set it to 2, 3, or more to account for multiple identical devices. Alternatively you can add separate rows for different appliances of the same type if they have different usage hours.</p></div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggleFaq(this)">
+          Does the PDF look professional enough to share?
+          <span class="faq-icon">+</span>
+        </button>
+        <div class="faq-a"><p>Yes — the PDF is formatted as a proper A4 document with a dark gradient header, structured tables, consumer/bill info boxes, a highlighted total, and a disclaimer footer. It looks like a utility bill preview and can be shared for informal record-keeping or estimation discussions.</p></div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggleFaq(this)">
+          Can I use this offline?
+          <span class="faq-icon">+</span>
+        </button>
+        <div class="faq-a"><p>Yes, partially. The HTML files work offline — calculations, previews, and downloads all function without internet. However, the Google Fonts used for typography require an internet connection to load. The tools function correctly without fonts; they'll just fall back to system fonts.</p></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════ CTA ═══════════════════════════ -->
+<section class="cta-section">
+  <div class="container-sm">
+    <span class="eyebrow">Get Started</span>
+    <h2>Pick Your Calculator<br>and Start Estimating</h2>
+    <p>Both tools are free, instant, and require no signup. Open, fill in, download. That's it.</p>
+    <div class="cta-tools">
+      <div class="cta-tool-card">
+        <span class="cta-tool-icon">⚡</span>
+        <h3>Meter-Based Calculator</h3>
+        <p>Use your meter readings to generate a complete bill breakdown with consumer details.</p>
+        <a href="electricity_bill_generator.html" class="btn btn-brown" style="width:100%;justify-content:center;">Open Tool →</a>
+      </div>
+      <div class="cta-tool-card">
+        <span class="cta-tool-icon">🔌</span>
+        <h3>Appliance-Based Estimator</h3>
+        <p>List your appliances with wattage and usage time to estimate cost from the ground up.</p>
+        <a href="appliance_bill_generator.html" class="btn btn-sky" style="width:100%;justify-content:center;">Open Tool →</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════ FOOTER ═══════════════════════════ -->
+<footer>
+  <div class="container">
+    <div class="footer-main">
+      <div class="footer-brand">
+        <div class="footer-logo">
+          <div class="footer-logo-mark">⚡</div>
+          <span class="footer-logo-text">ElectroCalc</span>
+        </div>
+        <p>Free, browser-based electricity bill estimation tools. No login. No data stored. Just open and use.</p>
+        <div class="footer-disclaimer">
+          <strong>⚠ Estimation Only</strong>
+          All bills generated by these tools are for estimation and preview purposes only. They are not official utility bills and carry no legal standing.
+        </div>
+      </div>
+      <div class="footer-col">
+        <h4>Tools</h4>
+        <ul>
+          <li><a href="electricity_bill_generator.html">⚡ Meter-Based Calculator</a></li>
+          <li><a href="appliance_bill_generator.html">🔌 Appliance Estimator</a></li>
+          <li><a href="#tools">Compare Tools</a></li>
+          <li><a href="#how-to-use">How to Use</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h4>Information</h4>
+        <ul>
+          <li><a href="#about">About ElectroCalc</a></li>
+          <li><a href="#for-whom">Who Is It For?</a></li>
+          <li><a href="#features">All Features</a></li>
+          <li><a href="#faq">FAQ</a></li>
+          <li><a href="javascript:void(0)" onclick="openModal('modal-info')">Technical Info</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h4>Legal</h4>
+        <ul>
+          <li><a href="javascript:void(0)" onclick="openModal('modal-terms')">Terms of Use</a></li>
+          <li><a href="javascript:void(0)" onclick="openModal('modal-privacy')">Privacy Policy</a></li>
+          <li><a href="javascript:void(0)" onclick="openModal('modal-disclaimer')">Disclaimer</a></li>
+        </ul>
+        <div class="footer-info-box">
+          <strong>Data & Privacy</strong>
+          All calculations run locally in your browser. Zero data is collected, transmitted, or stored.
+        </div>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <p>© 2025 ElectroCalc. Free estimation tools. Not affiliated with any utility provider.</p>
+      <div class="footer-bottom-links">
+        <a href="javascript:void(0)" onclick="openModal('modal-terms')">Terms</a>
+        <a href="javascript:void(0)" onclick="openModal('modal-privacy')">Privacy</a>
+        <a href="javascript:void(0)" onclick="openModal('modal-disclaimer')">Disclaimer</a>
+        <a href="javascript:void(0)" onclick="openModal('modal-info')">Tech Info</a>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<!-- ═══════════════════════════ MODALS ═══════════════════════════ -->
+
+<!-- Terms Modal -->
+<div class="modal-overlay" id="modal-terms" onclick="closeModalOutside(event, 'modal-terms')">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Terms of Use</h3>
+      <button class="modal-close" onclick="closeModal('modal-terms')">✕</button>
+    </div>
+    <div class="modal-body">
+      <h4>1. Acceptance of Terms</h4>
+      <p>By using ElectroCalc and its associated tools (the "Meter-Based Electricity Bill Generator" and "Appliance-Based Electricity Bill Estimator"), you agree to these terms. If you do not agree, please discontinue use.</p>
+      <h4>2. Nature of the Service</h4>
+      <p>ElectroCalc is a free, browser-based estimation tool. It does not provide official billing, payment processing, or utility management services. All outputs are clearly labeled as previews for estimation purposes only.</p>
+      <h4>3. Permitted Use</h4>
+      <p>You may use these tools for personal, educational, or internal business estimation. You may download and share the generated PDFs and Excel files for informal reference, provided the disclaimer text is not removed.</p>
+      <h4>4. Prohibited Use</h4>
+      <ul>
+        <li>Using generated bills as official utility bills in legal or regulatory contexts</li>
+        <li>Submitting generated bills as evidence of payment or debt</li>
+        <li>Representing generated bills as issued by a licensed electricity provider</li>
+        <li>Commercial redistribution of the tool files without attribution</li>
+      </ul>
+      <h4>5. Accuracy Disclaimer</h4>
+      <p>Estimates are based solely on the values entered by the user. ElectroCalc makes no warranty, express or implied, about the accuracy of the calculations relative to any real utility bill. Always verify with your actual provider.</p>
+      <h4>6. Liability</h4>
+      <p>ElectroCalc and its creators shall not be liable for any damages arising from the use or misuse of these tools, including but not limited to financial loss, billing disputes, or regulatory non-compliance.</p>
+      <h4>7. Changes</h4>
+      <p>These terms may be updated at any time. Continued use of the tools constitutes acceptance of any revised terms.</p>
+    </div>
+  </div>
+</div>
+
+<!-- Privacy Modal -->
+<div class="modal-overlay" id="modal-privacy" onclick="closeModalOutside(event, 'modal-privacy')">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Privacy Policy</h3>
+      <button class="modal-close" onclick="closeModal('modal-privacy')">✕</button>
+    </div>
+    <div class="modal-body">
+      <h4>Our Commitment to Privacy</h4>
+      <p>ElectroCalc is designed with privacy as a first principle. We do not collect, store, process, or transmit any personal data.</p>
+      <h4>What Data We Collect</h4>
+      <p>None. Absolutely nothing. All data you enter — consumer names, meter readings, appliance details, charges — exists only in your browser's memory while the page is open. When you close the tab or window, all data is erased.</p>
+      <h4>Local Processing Only</h4>
+      <p>All calculations, bill generation, PDF creation, and Excel export happen entirely within your browser using JavaScript. No information is sent to any external server at any point.</p>
+      <h4>Third-Party Libraries</h4>
+      <p>These tools use the following third-party JavaScript libraries loaded from CDN:</p>
+      <ul>
+        <li>jsPDF (Cloudflare CDN) — for PDF generation</li>
+        <li>SheetJS/xlsx (Cloudflare CDN) — for Excel generation</li>
+        <li>Google Fonts — for typography (requires internet connection)</li>
+      </ul>
+      <p>These CDN requests may log your IP address per those providers' policies, but no bill data is included in these requests.</p>
+      <h4>Cookies</h4>
+      <p>No cookies are set or read by ElectroCalc. No session data is stored.</p>
+      <h4>Children's Privacy</h4>
+      <p>These tools are appropriate for general use including educational settings. No personal data collection means no special child privacy concerns apply.</p>
+      <h4>Contact</h4>
+      <p>If you have privacy-related questions, concerns are addressed through the standard contact channels for this tool's distribution platform.</p>
+    </div>
+  </div>
+</div>
+
+<!-- Disclaimer Modal -->
+<div class="modal-overlay" id="modal-disclaimer" onclick="closeModalOutside(event, 'modal-disclaimer')">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Disclaimer</h3>
+      <button class="modal-close" onclick="closeModal('modal-disclaimer')">✕</button>
+    </div>
+    <div class="modal-body">
+      <h4>Estimation Tool — Not Official Billing</h4>
+      <p>The bills and documents generated by ElectroCalc are strictly for estimation and preview purposes. They are not official electricity bills issued by any licensed utility company, government body, or regulated billing entity.</p>
+      <h4>No Affiliation with Utility Providers</h4>
+      <p>ElectroCalc is not affiliated with, endorsed by, or connected to any electricity distribution company, government utility board, or energy regulator in any country. The tool name "WattBill" and "PowerBill" appearing in generated documents are fictional display names.</p>
+      <h4>Calculation Accuracy</h4>
+      <p>Calculations are based entirely on user-entered values. ElectroCalc does not verify whether entered rates, readings, or charges match any real-world tariff schedule. Actual electricity bills may differ significantly due to tiered pricing, subsidies, demand charges, power factor adjustments, and other factors not captured by these tools.</p>
+      <h4>Not for Legal Use</h4>
+      <p>Generated PDFs and Excel files must not be used as evidence of billing, debt, payment, or contractual obligation in any legal, financial, regulatory, or commercial proceeding.</p>
+      <h4>Currency Calculations</h4>
+      <p>Currency symbols are for display purposes only. No currency conversion is performed. All amounts are calculated using the rates entered by the user.</p>
+    </div>
+  </div>
+</div>
+
+<!-- Technical Info Modal -->
+<div class="modal-overlay" id="modal-info" onclick="closeModalOutside(event, 'modal-info')">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Technical Information</h3>
+      <button class="modal-close" onclick="closeModal('modal-info')">✕</button>
+    </div>
+    <div class="modal-body">
+      <h4>Architecture</h4>
+      <p>Both tools are single-file HTML applications. All logic, styling, and UI is contained within one .html file per tool. No build system, framework, or backend is required.</p>
+      <h4>Technology Stack</h4>
+      <ul>
+        <li><strong>HTML5</strong> — Structure and markup</li>
+        <li><strong>CSS3</strong> — Custom properties, Grid, Flexbox, animations</li>
+        <li><strong>Vanilla JavaScript</strong> — All calculations and DOM manipulation</li>
+        <li><strong>jsPDF v2.5.1</strong> — Client-side PDF generation</li>
+        <li><strong>SheetJS (xlsx) v0.18.5</strong> — Client-side Excel generation</li>
+        <li><strong>Google Fonts</strong> — Typography (requires internet)</li>
+      </ul>
+      <h4>Calculation Logic</h4>
+      <p><strong>Meter-Based Tool:</strong> Units = Current − Previous. Energy Charge = Units × Rate. Subtotal = Energy + Fixed + Other. Tax = Subtotal × (Rate/100). Total = Subtotal + Tax.</p>
+      <p><strong>Appliance Tool:</strong> Per appliance: kWh = (Watts/1000) × Hours/Day × Days × Quantity. Total kWh = sum of all appliances. Same billing formula applies after.</p>
+      <h4>Browser Compatibility</h4>
+      <p>Tested on Chrome 100+, Firefox 100+, Safari 15+, and Edge 100+. PDF and Excel download require modern browser APIs. Print functionality uses standard window.print().</p>
+      <h4>Offline Usage</h4>
+      <p>Core functionality works offline. Google Fonts and CDN libraries require internet on first load. If used from a CDN-cached version or saved locally with offline libraries, full offline usage is possible.</p>
+      <h4>File Naming</h4>
+      <p>Meter Tool PDF: electricity_bill_{meterNumber}_{month}.pdf | Appliance Tool PDF: electricity_bill_{billNumber}.pdf | Both Excel files follow the same naming pattern.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════ JS ═══════════════════════════ -->
+<script>
+// MOBILE NAV
+function toggleMobileNav() {
+  const links = document.getElementById('navLinks');
+  const cta = document.getElementById('navCta');
+  links.classList.toggle('open');
+  cta.classList.toggle('open');
+}
+
+// TABS
+function switchTab(id, btn, activeClass) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active-brown','active-sky'));
+  document.getElementById(id).classList.add('active');
+  btn.classList.add(activeClass);
+}
+
+// FAQ
+function toggleFaq(btn) {
+  const item = btn.closest('.faq-item');
+  const isOpen = item.classList.contains('open');
+  document.querySelectorAll('.faq-item.open').forEach(i => i.classList.remove('open'));
+  if (!isOpen) item.classList.add('open');
+}
+
+// MODALS
+function openModal(id) {
+  document.getElementById(id).classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+function closeModal(id) {
+  document.getElementById(id).classList.remove('open');
+  document.body.style.overflow = '';
+}
+function closeModalOutside(e, id) {
+  if (e.target.id === id) closeModal(id);
+}
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    document.querySelectorAll('.modal-overlay.open').forEach(m => {
+      m.classList.remove('open');
+      document.body.style.overflow = '';
+    });
+  }
+});
+
+// SMOOTH SCROLL OFFSET for sticky nav
+document.querySelectorAll('a[href^="#"]').forEach(a => {
+  a.addEventListener('click', function(e) {
+    const target = document.querySelector(this.getAttribute('href'));
+    if (target) {
+      e.preventDefault();
+      const offset = 72;
+      const top = target.getBoundingClientRect().top + window.pageYOffset - offset;
+      window.scrollTo({ top, behavior: 'smooth' });
+    }
+  });
+});
+</script>
+</body>
+</html>

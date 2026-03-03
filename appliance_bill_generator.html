@@ -1,0 +1,776 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Appliance-Based Bill Estimator — ElectroCalc</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ═══ DESIGN TOKENS ═══ */
+:root {
+  --black:#0e0e0e; --off-black:#1c1a18; --near-black:#2a2420;
+  --white:#ffffff; --off-white:#f7f4f0; --cream:#ede8e0; --warm-gray:#c8bfb2;
+  --brown-dark:#5c3d2e; --brown-mid:#8b5e3c; --brown-light:#b8886a;
+  --brown-pale:#d9b89a; --brown-wash:#f0e4d7;
+  --sky-dark:#2b5f7a; --sky-mid:#3d85a8; --sky-light:#6aadcc;
+  --sky-pale:#a8d4e8; --sky-wash:#dff0f8;
+  --grad-brown:linear-gradient(135deg,#5c3d2e 0%,#b8886a 50%,#d9b89a 100%);
+  --grad-sky:linear-gradient(135deg,#2b5f7a 0%,#3d85a8 50%,#6aadcc 100%);
+  --grad-mix:linear-gradient(135deg,#3d2b1f 0%,#5c3d2e 30%,#2b5f7a 70%,#3d85a8 100%);
+  --grad-subtle:linear-gradient(160deg,#f7f4f0 0%,#dff0f8 40%,#f0e4d7 100%);
+  --shadow-sm:0 2px 12px rgba(92,61,46,.08);
+  --shadow-md:0 8px 40px rgba(92,61,46,.12);
+  --radius:16px; --radius-sm:10px; --radius-pill:100px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--white);color:var(--off-black);font-family:'DM Sans',sans-serif;line-height:1.7;-webkit-font-smoothing:antialiased;min-height:100vh}
+body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse 70% 40% at 50% 0%,rgba(61,133,168,.06) 0%,transparent 60%),radial-gradient(ellipse 40% 60% at 100% 100%,rgba(184,136,106,.05) 0%,transparent 50%);pointer-events:none;z-index:0}
+h1,h2,h3{font-family:'Playfair Display',serif;line-height:1.2}
+a{text-decoration:none;color:inherit}
+::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:var(--off-white)}::-webkit-scrollbar-thumb{background:var(--brown-light);border-radius:3px}
+
+/* ═══ NAV ═══ */
+.nav{position:sticky;top:0;z-index:100;background:rgba(255,255,255,.92);backdrop-filter:blur(20px);border-bottom:1px solid rgba(92,61,46,.08);animation:slideDown .4s ease both}
+@keyframes slideDown{from{transform:translateY(-100%);opacity:0}to{transform:translateY(0);opacity:1}}
+.nav-inner{display:flex;align-items:center;justify-content:space-between;padding:1rem 2rem;max-width:1300px;margin:0 auto;gap:1.5rem}
+.nav-logo{display:flex;align-items:center;gap:.6rem;flex-shrink:0}
+.nav-logo-mark{width:36px;height:36px;background:var(--grad-mix);border-radius:10px;display:grid;place-items:center;font-size:1.1rem}
+.nav-logo-text{font-family:'Playfair Display',serif;font-size:1.25rem;font-weight:700;background:var(--grad-mix);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.nav-center{display:flex;align-items:center;gap:.25rem;background:var(--off-white);border:1px solid var(--cream);border-radius:var(--radius-pill);padding:.35rem}
+.nav-center a{padding:.4rem .95rem;border-radius:var(--radius-pill);font-size:.82rem;font-weight:500;color:#7a6e65;transition:all .2s;white-space:nowrap}
+.nav-center a:hover{background:var(--sky-wash);color:var(--sky-dark)}
+.nav-center a.active{background:var(--sky-dark);color:var(--white);box-shadow:0 2px 8px rgba(43,95,122,.25)}
+.nav-right{display:flex;gap:.6rem;flex-shrink:0}
+.btn{display:inline-flex;align-items:center;gap:.45rem;padding:.6rem 1.4rem;border-radius:var(--radius-pill);font-family:'DM Sans',sans-serif;font-size:.875rem;font-weight:600;cursor:pointer;border:none;transition:all .22s;white-space:nowrap}
+.btn-ghost{background:transparent;border:1.5px solid var(--warm-gray);color:var(--off-black)}
+.btn-ghost:hover{border-color:var(--sky-light);color:var(--sky-dark);background:var(--sky-wash)}
+.btn-brown{background:var(--brown-dark);color:var(--white)}
+.btn-brown:hover:not(:disabled){background:var(--brown-mid);transform:translateY(-1px);box-shadow:0 6px 20px rgba(92,61,46,.35)}
+.btn-sky{background:var(--sky-dark);color:var(--white)}
+.btn-sky:hover:not(:disabled){background:var(--sky-mid);transform:translateY(-1px);box-shadow:0 6px 20px rgba(43,95,122,.35)}
+.btn-print{background:transparent;border:1.5px solid var(--warm-gray);color:#6b6058}
+.btn-print:hover{border-color:var(--brown-light);color:var(--brown-dark);background:var(--brown-wash)}
+.btn-reset{background:transparent;border:1.5px solid var(--cream);color:var(--warm-gray)}
+.btn-reset:hover{border-color:var(--warm-gray);color:#6b6058;background:var(--off-white)}
+.btn:disabled{opacity:.35;cursor:not-allowed;transform:none!important;box-shadow:none!important}
+@media(max-width:780px){.nav-center{display:none}.nav-right .btn-ghost{display:none}}
+
+/* ═══ HERO ═══ */
+.page-hero{background:var(--grad-subtle);border-bottom:1px solid rgba(43,95,122,.1);padding:2.8rem 0 2.5rem;position:relative;overflow:hidden;animation:fadeUp .5s .1s ease both}
+.page-hero::before{content:'';position:absolute;top:-60px;right:-80px;width:420px;height:420px;border-radius:50%;background:radial-gradient(circle,rgba(61,133,168,.1) 0%,transparent 70%);pointer-events:none}
+.page-hero::after{content:'';position:absolute;bottom:-60px;left:-80px;width:350px;height:350px;border-radius:50%;background:radial-gradient(circle,rgba(184,136,106,.1) 0%,transparent 70%);pointer-events:none}
+@keyframes fadeUp{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1}}
+.page-hero-inner{max-width:1300px;margin:0 auto;padding:0 2rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1.5rem;position:relative;z-index:1}
+.page-hero-eyebrow{display:inline-flex;align-items:center;gap:.5rem;background:var(--white);border:1px solid var(--cream);border-radius:var(--radius-pill);padding:.3rem .9rem .3rem .4rem;font-size:.72rem;font-weight:600;color:var(--sky-dark);margin-bottom:1rem;box-shadow:var(--shadow-sm)}
+.page-hero-eyebrow span{background:var(--grad-sky);color:var(--white);padding:.18rem .6rem;border-radius:var(--radius-pill);font-size:.68rem;font-weight:700}
+.page-hero h1{font-size:clamp(1.6rem,3.5vw,2.4rem);font-weight:700;color:var(--black);margin-bottom:.5rem;line-height:1.15}
+.page-hero h1 em{font-style:normal;background:var(--grad-sky);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.page-hero p{font-size:.9rem;color:#6b6058;font-weight:300;max-width:480px}
+.page-hero-right{display:flex;gap:.6rem;flex-wrap:wrap;align-items:center}
+.live-chip{display:inline-flex;align-items:center;gap:.4rem;background:rgba(43,95,122,.1);border:1px solid rgba(43,95,122,.2);color:var(--sky-dark);border-radius:var(--radius-pill);padding:.35rem .85rem;font-size:.75rem;font-weight:600}
+.live-chip.brn{background:rgba(92,61,46,.08);border-color:rgba(92,61,46,.18);color:var(--brown-dark)}
+.live-dot{width:7px;height:7px;border-radius:50%;background:var(--sky-mid);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.85)}}
+
+/* ═══ APP LAYOUT ═══ */
+.app-wrap{max-width:1300px;margin:0 auto;padding:2rem;display:grid;grid-template-columns:1fr 1fr;gap:1.75rem;align-items:start;position:relative;z-index:1;animation:fadeUp .5s .2s ease both}
+@media(max-width:960px){.app-wrap{grid-template-columns:1fr}}
+.panel{background:var(--white);border:1px solid var(--cream);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow-sm);transition:box-shadow .25s}
+.panel:hover{box-shadow:var(--shadow-md)}
+.panel-head{display:flex;align-items:center;gap:.75rem;padding:1.1rem 1.5rem;background:var(--off-white);border-bottom:1px solid var(--cream)}
+.phi{width:34px;height:34px;border-radius:9px;display:grid;place-items:center;font-size:1rem;flex-shrink:0}
+.phi-sky{background:var(--sky-wash)} .phi-brown{background:var(--brown-wash)}
+.panel-head h2{font-family:'Playfair Display',serif;font-size:1rem;font-weight:700;color:var(--near-black);flex:1}
+.panel-body{padding:1.5rem}
+.sec-div{display:flex;align-items:center;gap:.65rem;margin:1.1rem 0 .9rem;font-size:.7rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--sky-mid)}
+.sec-div::after{content:'';flex:1;height:1px;background:var(--cream)}
+.fg{display:grid;gap:.9rem} .fg2{grid-template-columns:1fr 1fr} .fg3{grid-template-columns:1fr 1fr 1fr}
+@media(max-width:500px){.fg2,.fg3{grid-template-columns:1fr}}
+.fg label{font-size:.7rem;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--sky-mid);display:block;margin-bottom:.38rem}
+input,select{background:var(--off-white);border:1.5px solid var(--cream);border-radius:var(--radius-sm);color:var(--off-black);font-family:'DM Sans',sans-serif;font-size:.88rem;padding:.65rem .9rem;width:100%;outline:none;transition:all .2s;-webkit-appearance:none}
+input:focus,select:focus{border-color:var(--sky-light);box-shadow:0 0 0 3px rgba(106,173,204,.15);background:var(--white)}
+input.err{border-color:#c0392b;box-shadow:0 0 0 3px rgba(192,57,43,.1)}
+select option{background:var(--white)}
+.ro{background:rgba(43,95,122,.06);border-color:rgba(43,95,122,.18);color:var(--sky-dark);font-weight:600;font-size:.82rem;cursor:default}
+.ro:focus{box-shadow:none}
+.cur-row{display:flex;align-items:center;gap:.6rem}
+.cur-badge{flex-shrink:0;min-width:36px;height:38px;border-radius:var(--radius-sm);background:var(--sky-wash);border:1.5px solid rgba(43,95,122,.18);color:var(--sky-dark);font-weight:700;font-size:.88rem;display:grid;place-items:center}
+.cur-row select{flex:1}
+
+/* ═══ APPLIANCE TABLE ═══ */
+.tbl-wrap{overflow-x:auto;margin-top:.5rem;border:1px solid var(--cream);border-radius:var(--radius-sm)}
+.atbl{width:100%;border-collapse:collapse;font-size:.8rem;min-width:560px}
+.atbl thead th{background:var(--off-white);border-bottom:1px solid var(--cream);padding:.55rem .6rem;text-align:left;font-size:.65rem;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--sky-mid);white-space:nowrap}
+.atbl tbody tr{border-bottom:1px solid var(--cream)}
+.atbl tbody tr:last-child{border-bottom:none}
+.atbl tbody tr:hover{background:var(--sky-wash);transition:background .15s}
+.atbl td{padding:.4rem .45rem;vertical-align:top}
+.atbl td input{padding:.42rem .5rem;font-size:.8rem;background:var(--white);border-color:var(--cream)}
+.atbl td input:focus{border-color:var(--sky-light)}
+.w55{width:55px!important} .w65{width:65px!important} .w110{width:110px!important}
+.kwh-c{font-weight:700;font-size:.78rem;color:var(--sky-dark);text-align:right;padding-top:.68rem;white-space:nowrap}
+.del-btn{width:28px;height:28px;border-radius:6px;background:transparent;border:1.5px solid rgba(192,57,43,.25);color:#c0392b;cursor:pointer;display:grid;place-items:center;font-size:1rem;transition:all .2s}
+.del-btn:hover{background:rgba(192,57,43,.08);border-color:rgba(192,57,43,.5)}
+.add-btn{margin-top:.75rem;display:flex;align-items:center;justify-content:center;gap:.5rem;background:transparent;border:1.5px dashed var(--cream);color:var(--warm-gray);font-family:'DM Sans',sans-serif;font-size:.85rem;font-weight:500;padding:.6rem 1rem;border-radius:var(--radius-sm);cursor:pointer;transition:all .2s;width:100%}
+.add-btn:hover{border-color:var(--sky-light);color:var(--sky-dark);background:var(--sky-wash)}
+.tot-bar{margin-top:.9rem;background:var(--sky-wash);border:1.5px solid rgba(43,95,122,.2);border-radius:var(--radius-sm);padding:.9rem 1.25rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.5rem;position:relative;overflow:hidden}
+.tot-bar::before{content:'';position:absolute;inset:0;background:var(--grad-sky);opacity:.04;pointer-events:none}
+.tot-bar .tb-lbl{font-size:.72rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--sky-mid)}
+.tot-bar .tb-val{font-family:'Playfair Display',serif;font-size:1.4rem;font-weight:700;background:var(--grad-sky);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.btn-row{display:flex;gap:.7rem;flex-wrap:wrap;padding:1.1rem 1.5rem;border-top:1px solid var(--cream);background:var(--off-white)}
+
+/* ═══ EMPTY STATE ═══ */
+.empty-st{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:380px;color:var(--warm-gray);gap:1.1rem;padding:2.5rem}
+.empty-ico{font-size:3.5rem;opacity:.2;animation:float 4s ease-in-out infinite}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
+.empty-st p{font-size:.83rem;text-align:center;line-height:1.7;max-width:240px}
+.empty-hint{background:var(--off-white);border:1px solid var(--cream);border-radius:var(--radius-sm);padding:.6rem 1rem;font-size:.75rem;color:#8a7e75;text-align:center}
+
+/* ═══ BILL PREVIEW (screen) ═══ */
+#bill-preview{background:var(--white);color:var(--near-black);font-family:'DM Sans',sans-serif;border-radius:var(--radius-sm);overflow:hidden;animation:fadeIn .35s ease both}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.bp-hd{background:linear-gradient(135deg,#1c1410 0%,#1a2d3f 40%,#1a3d58 75%,#1c4560 100%);color:var(--white);padding:1.4rem 1.6rem;display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:1rem}
+.bp-logo{display:flex;align-items:center;gap:.8rem}
+.bp-mark{width:40px;height:40px;background:var(--grad-sky);border-radius:10px;display:grid;place-items:center;font-size:1.3rem;flex-shrink:0}
+.bp-on{font-family:'Playfair Display',serif;font-size:1.15rem;font-weight:700}
+.bp-os{font-size:.68rem;opacity:.6;letter-spacing:.06em;font-weight:300;margin-top:.1rem}
+.bp-meta{text-align:right}
+.bp-title{font-family:'Playfair Display',serif;font-size:1.3rem;color:var(--sky-pale)}
+.bp-sub{font-size:.72rem;opacity:.55;margin-top:.15rem;font-weight:300}
+.bp-body{padding:1.25rem 1.4rem}
+.bp-grid{display:grid;grid-template-columns:1fr 1fr;gap:.9rem;margin-bottom:1.1rem}
+@media(max-width:480px){.bp-grid{grid-template-columns:1fr}}
+.bp-box{background:var(--off-white);border:1px solid var(--cream);border-radius:var(--radius-sm);padding:.85rem 1rem}
+.bp-bt{font-size:.62rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--sky-mid);margin-bottom:.55rem}
+.bp-r{display:flex;justify-content:space-between;font-size:.8rem;color:#6b6058;margin-bottom:.22rem}
+.bp-r:last-child{margin-bottom:0}
+.bp-r span:last-child{font-weight:600;color:var(--near-black)}
+.bp-tbl{width:100%;border-collapse:collapse;font-size:.78rem;margin-bottom:1rem}
+.bp-tbl thead th{background:var(--near-black);color:var(--white);padding:.6rem .75rem;text-align:left;font-size:.64rem;font-weight:700;letter-spacing:.09em;text-transform:uppercase}
+.bp-tbl thead th:last-child,.bp-tbl td:last-child{text-align:right}
+.bp-tbl td{padding:.52rem .75rem;border-bottom:1px solid var(--cream);color:#4a4038}
+.bp-tbl tr:nth-child(even) td{background:var(--off-white)}
+.bp-tbl tfoot td{background:var(--off-white)!important;font-weight:700;color:var(--near-black)!important;border-bottom:none!important}
+.bp-tr td{background:var(--near-black)!important;color:var(--white)!important;font-weight:700;font-size:.9rem!important;border:none!important}
+.bp-tr td:last-child{color:var(--sky-pale)!important;font-size:1rem!important}
+.bp-ft{background:var(--off-white);border-top:1px solid var(--cream);padding:.7rem 1.4rem;font-size:.7rem;color:var(--warm-gray);text-align:center;font-style:italic}
+
+/* ═══ PDF LOADER ═══ */
+#pdf-loader{display:none;position:fixed;inset:0;background:rgba(247,244,240,.92);backdrop-filter:blur(10px);z-index:9999;flex-direction:column;align-items:center;justify-content:center;gap:1.2rem}
+#pdf-loader.on{display:flex}
+.spin{width:50px;height:50px;border:3px solid var(--cream);border-top-color:var(--sky-mid);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+#pdf-loader p{font-size:.95rem;font-weight:600;color:var(--sky-dark)}
+
+/* ═══ PDF TEMPLATE (hidden, A4 795px wide) ═══
+     This is the actual element captured by html2canvas.
+     All styles must be inline-friendly (no CSS variables, no gradients via var).
+     We use explicit hex values so html2canvas renders them correctly.
+═══ */
+#pdft{
+  position:fixed; left:-9999px; top:0;
+  width:795px;
+  background:#ffffff;
+  font-family:'DM Sans',sans-serif;
+  color:#1c1a18;
+  pointer-events:none;
+  /* DO NOT set z-index negative — html2canvas needs it rendered */
+}
+
+/* PDF Header bar */
+.ph{
+  background:linear-gradient(135deg,#1c1410 0%,#1a2d3f 38%,#1a3d58 70%,#1b4460 100%);
+  padding:26px 32px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+}
+.ph-left{display:flex;align-items:center;gap:14px}
+.ph-icon{
+  width:54px;height:54px;flex-shrink:0;
+  background:linear-gradient(135deg,#2b5f7a 0%,#3d85a8 55%,#6aadcc 100%);
+  border-radius:13px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:26px;
+}
+.ph-brand{color:#ffffff}
+.ph-brand-name{font-family:'Playfair Display',serif;font-size:22px;font-weight:700;line-height:1.15;color:#ffffff}
+.ph-brand-sub{font-size:11px;color:rgba(255,255,255,.55);letter-spacing:.07em;margin-top:2px}
+.ph-right{text-align:right}
+.ph-bill-name{font-family:'Playfair Display',serif;font-size:24px;color:#a8d4e8}
+.ph-bill-ref{font-size:11px;color:rgba(255,255,255,.5);margin-top:4px;letter-spacing:.03em}
+
+/* PDF Info boxes */
+.pi-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:20px 32px 0}
+.pi-box{background:#f7f4f0;border:1px solid #e8e2d8;border-radius:9px;padding:14px 16px}
+.pi-title{font-size:10px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:#3d85a8;padding-bottom:8px;margin-bottom:8px;border-bottom:1px solid #e8e2d8}
+.pi-r{display:flex;justify-content:space-between;align-items:baseline;font-size:12px;color:#6b6058;margin-bottom:5px}
+.pi-r:last-child{margin-bottom:0}
+.pi-v{font-weight:600;color:#2a2420;font-size:12px}
+
+/* PDF Section title */
+.ps-title{font-size:11px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:#2b5f7a;padding:18px 32px 8px;display:flex;align-items:center;gap:10px}
+.ps-title::after{content:'';flex:1;height:1px;background:#e8e2d8}
+
+/* PDF Tables */
+.pt-wrap{padding:0 32px;margin-bottom:4px}
+.ptbl{width:100%;border-collapse:collapse;font-size:12px}
+.ptbl thead tr{background:#2a2420}
+.ptbl thead th{color:#ffffff;padding:9px 11px;text-align:left;font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;white-space:nowrap}
+.ptbl thead th:last-child{text-align:right}
+.ptbl tbody td{padding:8px 11px;border-bottom:1px solid #ede8e0;color:#3a3228;font-size:12px}
+.ptbl tbody td:last-child{text-align:right;font-weight:500}
+.ptbl tbody tr:nth-child(even) td{background:#f7f4f0}
+.ptbl tfoot td{background:#edf6fb;font-weight:700;color:#2a2420;border-top:1.5px solid #c8e0ec;border-bottom:none;padding:9px 11px;font-size:12px}
+.ptbl tfoot td:last-child{text-align:right}
+.ptbl .tot-row td{background:#2a2420!important;color:#ffffff!important;font-weight:700;font-size:14px;padding:11px 11px!important;border:none!important}
+.ptbl .tot-row td:last-child{color:#a8d4e8!important;font-size:15px!important;text-align:right}
+
+/* PDF Footer */
+.pf{
+  margin-top:20px;
+  background:#f7f4f0;
+  border-top:2px solid #e0d8ce;
+  padding:14px 32px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:16px;
+}
+.pf-brand{display:flex;align-items:center;gap:9px}
+.pf-icon{width:30px;height:30px;background:linear-gradient(135deg,#5c3d2e,#3d85a8);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0}
+.pf-name{font-family:'Playfair Display',serif;font-size:14px;font-weight:700;color:#2b5f7a}
+.pf-disc{font-size:9.5px;color:#b0a898;font-style:italic;text-align:right;line-height:1.5;max-width:400px}
+
+/* ═══ PRINT ═══ */
+@media print{.nav,.page-hero,.btn-row,.left-panel{display:none!important}.app-wrap{display:block!important;padding:0!important}.panel{box-shadow:none!important;border:none!important}#bill-preview{display:block!important}.empty-st{display:none!important}}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="nav">
+  <div class="nav-inner">
+    <a href="index.html" class="nav-logo">
+      <div class="nav-logo-mark">⚡</div>
+      <span class="nav-logo-text">ElectroCalc</span>
+    </a>
+    <div class="nav-center">
+      <a href="electricity_bill_generator.html">⚡ Meter-Based</a>
+      <a href="appliance_bill_generator.html" class="active">🔌 Appliance-Based</a>
+    </div>
+    <div class="nav-right">
+      <a href="index.html" class="btn btn-ghost">← Back to Home</a>
+      <a href="electricity_bill_generator.html" class="btn btn-brown">Try Meter Tool</a>
+    </div>
+  </div>
+</nav>
+
+<!-- PAGE HERO -->
+<div class="page-hero">
+  <div class="page-hero-inner">
+    <div>
+      <div class="page-hero-eyebrow"><span>Tool 2</span> Appliance Wattage — Electricity Bill Estimator</div>
+      <h1>Estimate Your Bill by<br><em>Appliance Usage</em></h1>
+      <p>Add appliances with wattage and usage time. Get a per-appliance energy breakdown and full bill preview — no meter reading needed.</p>
+    </div>
+    <div class="page-hero-right">
+      <div class="live-chip"><div class="live-dot"></div> Live Preview</div>
+      <div class="live-chip brn">🔒 No Data Stored</div>
+      <div class="live-chip brn">🌍 15 Currencies</div>
+    </div>
+  </div>
+</div>
+
+<!-- APP -->
+<div class="app-wrap">
+
+  <!-- FORM -->
+  <div class="left-panel">
+    <div class="panel">
+      <div class="panel-head">
+        <div class="phi phi-sky">📋</div>
+        <h2>Bill Configuration</h2>
+        <div class="live-chip" style="margin-left:auto;font-size:.68rem;padding:.25rem .65rem">
+          <div class="live-dot"></div>Live
+        </div>
+      </div>
+      <div class="panel-body">
+        <div class="fg">
+
+          <div class="sec-div">Consumer Details</div>
+          <div class="fg fg2">
+            <div><label>Consumer Name</label><input type="text" id="cName" placeholder="e.g. Sarah Johnson" oninput="go()"></div>
+            <div><label>Area / Location</label><input type="text" id="cArea" placeholder="e.g. 42 Park Lane, City" oninput="go()"></div>
+          </div>
+          <div class="fg fg3">
+            <div><label>Billing Month</label><input type="month" id="bMonth" oninput="go()"></div>
+            <div><label>Bill Number</label><input type="text" id="bNum" class="ro" readonly></div>
+            <div><label>Generated On</label><input type="text" id="bDate" class="ro" readonly></div>
+          </div>
+          <div class="fg fg2">
+            <div>
+              <label>Currency</label>
+              <div class="cur-row">
+                <span class="cur-badge" id="curBadge">₹</span>
+                <select id="currency" onchange="go()">
+                  <option value="INR|₹">INR – Indian Rupee (₹)</option>
+                  <option value="USD|$">USD – US Dollar ($)</option>
+                  <option value="EUR|€">EUR – Euro (€)</option>
+                  <option value="GBP|£">GBP – British Pound (£)</option>
+                  <option value="PKR|₨">PKR – Pakistani Rupee (₨)</option>
+                  <option value="BDT|৳">BDT – Bangladeshi Taka (৳)</option>
+                  <option value="AED|د.إ">AED – UAE Dirham (د.إ)</option>
+                  <option value="SAR|﷼">SAR – Saudi Riyal (﷼)</option>
+                  <option value="AUD|A$">AUD – Australian Dollar (A$)</option>
+                  <option value="CAD|C$">CAD – Canadian Dollar (C$)</option>
+                  <option value="SGD|S$">SGD – Singapore Dollar (S$)</option>
+                  <option value="MYR|RM">MYR – Malaysian Ringgit (RM)</option>
+                  <option value="LKR|Rs">LKR – Sri Lankan Rupee (Rs)</option>
+                  <option value="NPR|Rs">NPR – Nepalese Rupee (Rs)</option>
+                  <option value="ZAR|R">ZAR – South African Rand (R)</option>
+                </select>
+              </div>
+            </div>
+            <div><label>Per Unit Cost (per kWh)</label><input type="number" id="perUnit" placeholder="e.g. 6.50" min="0" step="0.01" oninput="go()"></div>
+          </div>
+          <div class="fg fg3">
+            <div><label>Fixed Charge</label><input type="number" id="fixedC" placeholder="0.00" min="0" step="0.01" oninput="go()"></div>
+            <div><label>Other Charges</label><input type="number" id="otherC" placeholder="0.00" min="0" step="0.01" oninput="go()"></div>
+            <div><label>Tax / Duty (%)</label><input type="number" id="taxR" placeholder="0" min="0" max="100" step="0.01" oninput="go()"></div>
+          </div>
+
+          <div class="sec-div">Appliances</div>
+          <div class="tbl-wrap">
+            <table class="atbl">
+              <thead>
+                <tr>
+                  <th style="min-width:110px">Appliance</th>
+                  <th>Watts</th><th>Qty</th><th>Hrs/Day</th><th>Days</th>
+                  <th style="text-align:right">kWh</th><th></th>
+                </tr>
+              </thead>
+              <tbody id="appBody"></tbody>
+            </table>
+          </div>
+          <button class="add-btn" onclick="addRow()">＋ Add Appliance</button>
+          <div class="tot-bar">
+            <div class="tb-lbl">⚡ Total Units Consumed</div>
+            <div class="tb-val" id="totalKwh">0.00 kWh</div>
+          </div>
+        </div>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-sky"   id="btnPdf"  onclick="makePDF()"   disabled>⬇ Download PDF</button>
+        <button class="btn btn-brown" id="btnXlsx" onclick="makeXLSX()" disabled>⬇ Download Excel</button>
+        <button class="btn btn-print" onclick="window.print()">🖨 Print</button>
+        <button class="btn btn-reset" onclick="resetAll()">↺ Reset</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- PREVIEW -->
+  <div class="right-panel">
+    <div class="panel">
+      <div class="panel-head">
+        <div class="phi phi-sky">👁</div>
+        <h2>Bill Preview</h2>
+        <div class="live-chip" style="margin-left:auto;font-size:.68rem;padding:.25rem .65rem">
+          <div class="live-dot"></div>Live
+        </div>
+      </div>
+      <div id="prevWrap">
+        <div class="empty-st" id="emptyS">
+          <div class="empty-ico">🔌</div>
+          <p>Add appliances and fill in details to generate your live bill preview</p>
+          <div class="empty-hint">Start by entering Consumer Name →</div>
+        </div>
+        <div id="bill-preview" style="display:none"></div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /app-wrap -->
+
+<!-- PDF LOADER -->
+<div id="pdf-loader">
+  <div class="spin"></div>
+  <p>Generating your PDF…</p>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     HIDDEN PDF TEMPLATE
+     Rendered off-screen, captured by html2canvas.
+     Uses explicit hex colors (no CSS vars) for reliability.
+═══════════════════════════════════════════════════ -->
+<div id="pdft">
+
+  <!-- HEADER -->
+  <div class="ph">
+    <div class="ph-left">
+      <div class="ph-icon">🔌</div>
+      <div class="ph-brand">
+        <div class="ph-brand-name">ElectroCalc</div>
+        <div class="ph-brand-sub">Appliance-Based Electricity Bill Estimator</div>
+      </div>
+    </div>
+    <div class="ph-right">
+      <div class="ph-bill-name">Electricity Bill</div>
+      <div class="ph-bill-ref" id="pdf-ref">—</div>
+    </div>
+  </div>
+
+  <!-- INFO BOXES -->
+  <div class="pi-row">
+    <div class="pi-box">
+      <div class="pi-title">Consumer Details</div>
+      <div class="pi-r"><span>Name</span>          <span class="pi-v" id="pdf-name">—</span></div>
+      <div class="pi-r"><span>Location</span>      <span class="pi-v" id="pdf-area">—</span></div>
+      <div class="pi-r"><span>Billing Period</span><span class="pi-v" id="pdf-period">—</span></div>
+      <div class="pi-r"><span>Currency</span>      <span class="pi-v" id="pdf-cur">—</span></div>
+    </div>
+    <div class="pi-box">
+      <div class="pi-title">Bill Information</div>
+      <div class="pi-r"><span>Bill Number</span>   <span class="pi-v" id="pdf-bnum">—</span></div>
+      <div class="pi-r"><span>Generated On</span>  <span class="pi-v" id="pdf-bdate">—</span></div>
+      <div class="pi-r"><span>Appliances</span>    <span class="pi-v" id="pdf-appct">—</span></div>
+      <div class="pi-r"><span>Total Energy</span>  <span class="pi-v" id="pdf-tkwh">—</span></div>
+    </div>
+  </div>
+
+  <!-- APPLIANCE TABLE -->
+  <div class="ps-title">Appliance Usage Breakdown</div>
+  <div class="pt-wrap">
+    <table class="ptbl">
+      <thead>
+        <tr>
+          <th>Appliance</th>
+          <th>Power (W)</th>
+          <th>Qty</th>
+          <th>Hrs / Day</th>
+          <th>Days</th>
+          <th>Energy (kWh)</th>
+        </tr>
+      </thead>
+      <tbody id="pdf-app-rows"></tbody>
+      <tfoot>
+        <tr>
+          <td colspan="5" style="text-align:right;font-weight:700">Total Units Consumed</td>
+          <td id="pdf-app-tot" style="font-weight:700;text-align:right">—</td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+
+  <!-- CHARGES TABLE -->
+  <div class="ps-title">Charges Breakdown</div>
+  <div class="pt-wrap">
+    <table class="ptbl">
+      <thead>
+        <tr>
+          <th>Description</th>
+          <th>Amount</th>
+        </tr>
+      </thead>
+      <tbody id="pdf-charge-rows"></tbody>
+    </table>
+  </div>
+
+  <!-- FOOTER -->
+  <div class="pf">
+    <div class="pf-brand">
+      <div class="pf-icon">⚡</div>
+      <span class="pf-name">ElectroCalc</span>
+    </div>
+    <div class="pf-disc">
+      ⚠ This is a system-generated electricity bill preview for estimation purposes only.<br>
+      Not an official utility document. Do not use for legal or regulatory purposes.
+    </div>
+  </div>
+
+</div><!-- /pdft -->
+
+<script>
+/* ═══ STATE & INIT ═══ */
+let rows = [], rowId = 0;
+const N = new Date();
+const $ = id => document.getElementById(id);
+const fv = id => parseFloat($(id).value) || 0;
+const tv = id => ($(id).value || '').trim();
+const f2 = n => parseFloat(n).toFixed(2);
+
+$('bNum').value  = 'BILL-' + (Math.floor(Math.random() * 90000) + 10000);
+$('bDate').value = N.toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' });
+$('bMonth').value = `${N.getFullYear()}-${String(N.getMonth()+1).padStart(2,'0')}`;
+
+/* ═══ HELPERS ═══ */
+function cur()  { const v=$('currency').value.split('|'); return {code:v[0], sym:v[1]} }
+function mstr() {
+  const mv=$('bMonth').value;
+  return mv ? new Date(mv+'-01').toLocaleDateString('en-GB',{month:'long',year:'numeric'}) : '—';
+}
+function calcAll(apps) {
+  let kWh=0; apps.forEach(a=>kWh+=a.kwh);
+  const {sym} = cur();
+  const pu=fv('perUnit'), fc=fv('fixedC'), oc=fv('otherC'), tx=fv('taxR');
+  const ec=kWh*pu, sub=ec+fc+oc, ta=sub*(tx/100), tot=sub+ta;
+  return {kWh, pu, fc, oc, tx, ec, sub, ta, tot, sym};
+}
+
+/* ═══ ROW MANAGEMENT ═══ */
+function addRow(data) {
+  const id = ++rowId; rows.push(id);
+  const d = data || {name:'',watts:'',qty:1,hrs:'',days:''};
+  const tr = document.createElement('tr'); tr.id='row-'+id;
+  tr.innerHTML=`
+    <td><input class="w110" type="text"   placeholder="Appliance" id="n${id}" value="${d.name}"  oninput="go()"></td>
+    <td><input class="w65"  type="number" placeholder="100"  min="0"             id="w${id}" value="${d.watts}" oninput="go()"></td>
+    <td><input class="w55"  type="number" placeholder="1"    min="1"   step="1"  id="q${id}" value="${d.qty}"   oninput="go()"></td>
+    <td><input class="w65"  type="number" placeholder="8"    min="0"   max="24"  id="h${id}" value="${d.hrs}"   oninput="go()"></td>
+    <td><input class="w65"  type="number" placeholder="30"   min="0"             id="d${id}" value="${d.days}"  oninput="go()"></td>
+    <td class="kwh-c" id="k${id}">–</td>
+    <td><button class="del-btn" onclick="delRow(${id})">×</button></td>`;
+  $('appBody').appendChild(tr);
+  go();
+}
+function delRow(id) { rows=rows.filter(r=>r!==id); const el=$('row-'+id); if(el)el.remove(); go(); }
+function vRow(id) {
+  let ok=true;
+  const w=parseFloat($('w'+id).value), q=parseInt($('q'+id).value);
+  const h=parseFloat($('h'+id).value), d=parseFloat($('d'+id).value);
+  [$('w'+id),$('q'+id),$('h'+id),$('d'+id)].forEach(el=>el&&el.classList.remove('err'));
+  if(isNaN(w)||w<0){$('w'+id).classList.add('err');ok=false}
+  if(isNaN(q)||q<1){$('q'+id).classList.add('err');ok=false}
+  if(isNaN(h)||h<0||h>24){$('h'+id).classList.add('err');ok=false}
+  if(isNaN(d)||d<0){$('d'+id).classList.add('err');ok=false}
+  return ok;
+}
+function rowKwh(id) {
+  const w=parseFloat($('w'+id).value)||0, q=parseInt($('q'+id).value)||1;
+  const h=parseFloat($('h'+id).value)||0, d=parseFloat($('d'+id).value)||0;
+  return (w/1000)*h*d*q;
+}
+function getApps() {
+  return rows.map(id=>({
+    name:($('n'+id).value||'').trim()||'Appliance',
+    w:parseFloat($('w'+id).value)||0, q:parseInt($('q'+id).value)||1,
+    h:parseFloat($('h'+id).value)||0, d:parseFloat($('d'+id).value)||0,
+    kwh:rowKwh(id)
+  }));
+}
+
+/* ═══ MAIN RECALC ═══ */
+function go() {
+  const {sym} = cur(); $('curBadge').textContent = sym;
+  let total=0, allOk=rows.length>0;
+  rows.forEach(id=>{
+    const ok=vRow(id); if(!ok)allOk=false;
+    const k=rowKwh(id); total+=k;
+    const c=$('k'+id); if(c)c.textContent=ok?f2(k)+' kWh':'–';
+  });
+  $('totalKwh').textContent = f2(total)+' kWh';
+  const apps=getApps(), C=calcAll(apps);
+  const valid=allOk&&rows.length>0&&fv('perUnit')>0&&tv('cName').length>0;
+  $('btnPdf').disabled=!valid; $('btnXlsx').disabled=!valid;
+
+  if(!tv('cName')&&rows.length===0){
+    $('bill-preview').style.display='none'; $('emptyS').style.display='flex'; return;
+  }
+  $('emptyS').style.display='none'; $('bill-preview').style.display='block';
+  $('bill-preview').style.animation='none'; void $('bill-preview').offsetWidth; $('bill-preview').style.animation='';
+  renderScreen(apps, C);
+}
+
+/* ═══ SCREEN RENDER ═══ */
+function renderScreen(apps, C) {
+  const {sym,code}=cur(), bn=$('bNum').value, bd=$('bDate').value, ms=mstr();
+  const nm=tv('cName')||'—', ar=tv('cArea')||'—';
+  const appRows=apps.map(a=>`
+    <tr>
+      <td>${a.name}</td><td>${a.w} W</td>
+      <td style="text-align:center">${a.q}</td>
+      <td style="text-align:center">${f2(a.h)} h</td>
+      <td style="text-align:center">${a.d} days</td>
+      <td>${f2(a.kwh)} kWh</td>
+    </tr>`).join('');
+  $('bill-preview').innerHTML=`
+  <div class="bp-hd">
+    <div class="bp-logo"><div class="bp-mark">🔌</div><div><div class="bp-on">ElectroCalc</div><div class="bp-os">Appliance-Based Estimator</div></div></div>
+    <div class="bp-meta"><div class="bp-title">Electricity Bill</div><div class="bp-sub">${bn} · ${ms}</div></div>
+  </div>
+  <div class="bp-body">
+    <div class="bp-grid">
+      <div class="bp-box">
+        <div class="bp-bt">Consumer Details</div>
+        <div class="bp-r"><span>Name</span><span>${nm}</span></div>
+        <div class="bp-r"><span>Location</span><span>${ar}</span></div>
+        <div class="bp-r"><span>Period</span><span>${ms}</span></div>
+        <div class="bp-r"><span>Currency</span><span>${code} (${sym})</span></div>
+      </div>
+      <div class="bp-box">
+        <div class="bp-bt">Bill Information</div>
+        <div class="bp-r"><span>Bill No.</span><span>${bn}</span></div>
+        <div class="bp-r"><span>Generated</span><span>${bd}</span></div>
+        <div class="bp-r"><span>Appliances</span><span>${apps.length}</span></div>
+        <div class="bp-r"><span>Total kWh</span><span>${f2(C.kWh)} kWh</span></div>
+      </div>
+    </div>
+    <table class="bp-tbl">
+      <thead><tr><th>Appliance</th><th>Watts</th><th style="text-align:center">Qty</th><th style="text-align:center">Hrs/Day</th><th style="text-align:center">Days</th><th>Energy (kWh)</th></tr></thead>
+      <tbody>${appRows}</tbody>
+      <tfoot><tr><td colspan="5" style="text-align:right;padding:.6rem .75rem">Total Units Consumed</td><td style="padding:.6rem .75rem;text-align:right">${f2(C.kWh)} kWh</td></tr></tfoot>
+    </table>
+    <table class="bp-tbl">
+      <thead><tr><th>Charge Description</th><th>Amount (${sym})</th></tr></thead>
+      <tbody>
+        <tr><td>Energy Charge (${f2(C.kWh)} kWh × ${sym}${f2(C.pu)})</td><td>${sym} ${f2(C.ec)}</td></tr>
+        <tr><td>Fixed Charge</td><td>${sym} ${f2(C.fc)}</td></tr>
+        ${C.oc>0?`<tr><td>Other Charges</td><td>${sym} ${f2(C.oc)}</td></tr>`:''}
+        <tr><td>Subtotal</td><td>${sym} ${f2(C.sub)}</td></tr>
+        <tr><td>Tax / Duty (${f2(C.tx)}%)</td><td>${sym} ${f2(C.ta)}</td></tr>
+        <tr class="bp-tr"><td>TOTAL PAYABLE</td><td>${sym} ${f2(C.tot)}</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="bp-ft">⚠ This is a system-generated electricity bill preview for estimation purposes only. Not an official document.</div>`;
+}
+
+/* ═══ PDF GENERATION ═══ */
+function makePDF() {
+  const apps=getApps(), C=calcAll(apps);
+  const {sym,code}=cur(), bn=$('bNum').value, bd=$('bDate').value, ms=mstr();
+  const nm=tv('cName')||'—', ar=tv('cArea')||'—';
+
+  /* — populate hidden template — */
+  $('pdf-ref').textContent    = `${bn}  ·  ${ms}`;
+  $('pdf-name').textContent   = nm;
+  $('pdf-area').textContent   = ar;
+  $('pdf-period').textContent = ms;
+  $('pdf-cur').textContent    = `${code} (${sym})`;
+  $('pdf-bnum').textContent   = bn;
+  $('pdf-bdate').textContent  = bd;
+  $('pdf-appct').textContent  = apps.length + ' appliance' + (apps.length !== 1 ? 's' : '');
+  $('pdf-tkwh').textContent   = f2(C.kWh) + ' kWh';
+  $('pdf-app-tot').textContent= f2(C.kWh) + ' kWh';
+
+  /* appliance rows */
+  $('pdf-app-rows').innerHTML = apps.map((a,i) =>
+    `<tr>
+      <td>${a.name}</td>
+      <td>${a.w} W</td>
+      <td style="text-align:center">${a.q}</td>
+      <td style="text-align:center">${f2(a.h)} h</td>
+      <td style="text-align:center">${a.d}</td>
+      <td>${f2(a.kwh)} kWh</td>
+    </tr>`).join('');
+
+  /* charge rows */
+  const chargeRows = [
+    [`Energy Charge (${f2(C.kWh)} kWh × ${sym}${f2(C.pu)})`, `${sym} ${f2(C.ec)}`],
+    [`Fixed Charge`, `${sym} ${f2(C.fc)}`],
+    ...(C.oc>0 ? [[`Other Charges`, `${sym} ${f2(C.oc)}`]] : []),
+    [`Subtotal`, `${sym} ${f2(C.sub)}`],
+    [`Tax / Duty (${f2(C.tx)}%)`, `${sym} ${f2(C.ta)}`],
+  ];
+  $('pdf-charge-rows').innerHTML =
+    chargeRows.map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td></tr>`).join('')+
+    `<tr class="tot-row"><td>TOTAL PAYABLE</td><td>${sym} ${f2(C.tot)}</td></tr>`;
+
+  /* — show loader, wait for fonts, then capture — */
+  const loader=$('pdf-loader'); loader.classList.add('on');
+  const tpl=$('pdft');
+  tpl.style.left='-9999px'; tpl.style.top='0';
+
+  /* small delay so fonts/emoji render */
+  setTimeout(()=>{
+    html2canvas(tpl,{
+      scale:2,
+      useCORS:true,
+      allowTaint:true,
+      backgroundColor:'#ffffff',
+      width:795,
+      windowWidth:795,
+      logging:false
+    }).then(canvas=>{
+      const {jsPDF}=window.jspdf;
+      const doc=new jsPDF({format:'a4',unit:'mm',orientation:'portrait'});
+      const pgW=210;
+      const pgH=297;
+      const imgH=(canvas.height*pgW)/canvas.width;
+
+      if(imgH<=pgH){
+        /* fits on one page */
+        doc.addImage(canvas.toDataURL('image/jpeg',0.96),'JPEG',0,0,pgW,imgH);
+      } else {
+        /* multi-page: slice at page boundaries */
+        const pxPerPage=Math.floor(canvas.width*pgH/pgW);
+        let offset=0;
+        while(offset<canvas.height){
+          const sliceH=Math.min(pxPerPage, canvas.height-offset);
+          const pg=document.createElement('canvas');
+          pg.width=canvas.width; pg.height=sliceH;
+          pg.getContext('2d').drawImage(canvas,0,-offset);
+          const rH=(sliceH*pgW)/canvas.width;
+          if(offset>0) doc.addPage();
+          doc.addImage(pg.toDataURL('image/jpeg',0.96),'JPEG',0,0,pgW,rH);
+          offset+=sliceH;
+        }
+      }
+      doc.save(`electricity_bill_${bn}.pdf`);
+      loader.classList.remove('on');
+    }).catch(()=>loader.classList.remove('on'));
+  }, 200);
+}
+
+/* ═══ EXCEL ═══ */
+function makeXLSX() {
+  const apps=getApps(), C=calcAll(apps);
+  const {sym,code}=cur(), bn=$('bNum').value, bd=$('bDate').value, ms=mstr();
+  const data=[
+    ['APPLIANCE-BASED ELECTRICITY BILL — ESTIMATION TOOL (ElectroCalc)'],
+    [],['CONSUMER DETAILS'],
+    ['Consumer Name',tv('cName')||'—'],['Area / Location',tv('cArea')||'—'],
+    ['Billing Month',ms],['Bill Number',bn],['Generated On',bd],['Currency',`${code} (${sym})`],
+    [],['APPLIANCE USAGE'],
+    ['Appliance','Power (W)','Qty','Hrs/Day','Days','Power (kW)','kWh/Day','Total kWh'],
+    ...apps.map(a=>[a.name,a.w,a.q,a.h,a.d,+(a.w/1000).toFixed(4),+((a.w/1000)*a.h).toFixed(4),+f2(a.kwh)]),
+    [],['','','','','','','TOTAL kWh:',+f2(C.kWh)],
+    [],['CHARGES BREAKDOWN'],['Description',`Amount (${sym})`],
+    [`Energy Charge (${f2(C.kWh)} kWh × ${sym}${f2(C.pu)})`,+f2(C.ec)],
+    ['Fixed Charge',+f2(C.fc)],
+    ...(C.oc>0?[['Other Charges',+f2(C.oc)]]:[]),
+    ['Subtotal',+f2(C.sub)],
+    [`Tax / Duty (${f2(C.tx)}%)`,+f2(C.ta)],
+    ['TOTAL PAYABLE',+f2(C.tot)],
+    [],['DISCLAIMER: System-generated estimate only. Not an official utility bill.']
+  ];
+  const wb=XLSX.utils.book_new();
+  const ws=XLSX.utils.aoa_to_sheet(data);
+  ws['!cols']=[{wch:48},{wch:12},{wch:8},{wch:10},{wch:8},{wch:12},{wch:14},{wch:16}];
+  XLSX.utils.book_append_sheet(wb,ws,'Electricity Bill');
+  XLSX.writeFile(wb,`electricity_bill_${bn}.xlsx`);
+}
+
+/* ═══ RESET ═══ */
+function resetAll(){
+  ['cName','cArea','perUnit','fixedC','otherC','taxR'].forEach(id=>$(id).value='');
+  $('currency').value='INR|₹'; $('curBadge').textContent='₹';
+  $('bMonth').value=`${N.getFullYear()}-${String(N.getMonth()+1).padStart(2,'0')}`;
+  $('bNum').value='BILL-'+(Math.floor(Math.random()*90000)+10000);
+  rows=[]; rowId=0; $('appBody').innerHTML='';
+  $('totalKwh').textContent='0.00 kWh';
+  $('bill-preview').style.display='none'; $('emptyS').style.display='flex';
+  $('btnPdf').disabled=true; $('btnXlsx').disabled=true;
+}
+
+/* ═══ PRELOAD SAMPLE DATA ═══ */
+addRow({name:'Air Conditioner', watts:1500, qty:1, hrs:8,  days:30});
+addRow({name:'Refrigerator',    watts:150,  qty:1, hrs:24, days:30});
+addRow({name:'LED Bulbs',       watts:10,   qty:6, hrs:6,  days:30});
+</script>
+</body>
+</html>
